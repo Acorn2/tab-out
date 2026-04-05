@@ -8,11 +8,13 @@ Tab Out replaces your Chrome new tab page with a mission dashboard: it groups yo
 
 ## What it does
 
-- **Groups your open tabs into missions** using the DeepSeek AI — tabs about the same topic cluster together automatically
+- **Groups your open tabs into missions** using AI — tabs about the same topic cluster together automatically
 - **Shows them on your new tab page** so every new tab is a reminder of what's actually open
 - **Lets you close tabs** with a satisfying swoosh and confetti when a mission is done
 - **Detects duplicate tabs** so you don't end up with five copies of the same page
-- **Works entirely locally** — your browsing data never leaves your machine; the AI call sends only tab titles and URLs to DeepSeek
+- **Works with any LLM** — DeepSeek (recommended, cheapest), OpenAI, Groq, Together, Ollama (fully local), or any OpenAI-compatible API
+- **Customizable prompts** — teach the AI your personal grouping preferences
+- **Works entirely locally** — your browsing data never leaves your machine; the AI call sends only tab titles and URLs
 
 ---
 
@@ -21,7 +23,7 @@ Tab Out replaces your Chrome new tab page with a mission dashboard: it groups yo
 - **macOS** — the auto-start feature uses macOS Launch Agents
 - **Node.js 18+** — [download here](https://nodejs.org)
 - **Google Chrome**
-- **DeepSeek API key** — clustering costs fractions of a cent; [get one here](https://platform.deepseek.com)
+- **An LLM API key** — we recommend [DeepSeek](https://platform.deepseek.com) (fractions of a cent per call), but any OpenAI-compatible provider works
 
 ---
 
@@ -30,7 +32,7 @@ Tab Out replaces your Chrome new tab page with a mission dashboard: it groups yo
 **1. Clone the repo**
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/tab-out.git
+git clone https://github.com/zarazhangrui/tab-out.git
 cd tab-out
 ```
 
@@ -48,15 +50,17 @@ npm run install-service
 
 This creates the `~/.mission-control/` data directory, writes a default config file, and installs a macOS Launch Agent so the server starts automatically when you log in.
 
-**4. Add your DeepSeek API key**
+**4. Add your API key**
 
-Open `~/.mission-control/config.json` in any text editor and paste your key:
+Open `~/.mission-control/config.json` and add your key:
 
 ```json
 {
-  "deepseekApiKey": "sk-your-key-here"
+  "apiKey": "sk-your-key-here"
 }
 ```
+
+That's it for DeepSeek (the default). For other providers, see [Configuration](#configuration) below.
 
 **5. Start the server**
 
@@ -64,7 +68,7 @@ Open `~/.mission-control/config.json` in any text editor and paste your key:
 npm start
 ```
 
-(After the Launch Agent is loaded, this happens automatically on login — you only need `npm start` the first time or after a manual stop.)
+(After the Launch Agent is loaded, this happens automatically on login.)
 
 **6. Load the Chrome extension**
 
@@ -75,7 +79,7 @@ npm start
 
 **7. Open a new tab**
 
-You'll see Tab Out. That's it.
+You'll see Tab Out.
 
 ---
 
@@ -85,38 +89,83 @@ Tab Out has two modes:
 
 | Mode | What happens |
 |------|-------------|
-| **Static (default)** | Opens instantly. Tabs grouped by domain. No AI call needed. |
-| **AI mode** | Click "Organize with AI". DeepSeek clusters your tabs into named missions. Results are cached — same set of tabs = instant load next time. |
+| **Static (default)** | Opens instantly. Tabs grouped by domain. No AI call, no cost. |
+| **AI mode** | Click "Organize with AI". Your LLM clusters tabs into named missions with a witty personal message. Results are cached — same tabs = instant load next time. |
 
-In the background, the server re-reads your Chrome browsing history every 30 minutes and updates the mission database. The extension badge on your toolbar shows your current mission count, color-coded by stress level (green → amber → red).
+The extension badge on your toolbar shows your current mission count, color-coded (green / amber / red).
 
 ---
 
 ## Configuration
 
-The config file lives at `~/.mission-control/config.json`. You can override any of these:
+The config file lives at `~/.mission-control/config.json`:
 
 ```json
 {
-  "deepseekApiKey": "",
+  "apiKey": "",
+  "baseUrl": "https://api.deepseek.com",
+  "model": "deepseek-chat",
   "port": 3456,
   "refreshIntervalMinutes": 30,
   "batchSize": 200,
   "historyDays": 7,
-  "deepseekBaseUrl": "https://api.deepseek.com",
-  "deepseekModel": "deepseek-chat"
+  "customPromptRules": ""
 }
 ```
 
+### LLM Provider Settings
+
 | Field | Default | What it does |
 |-------|---------|-------------|
-| `deepseekApiKey` | *(empty)* | Your DeepSeek API key — required for AI clustering |
-| `port` | `3456` | The local port the dashboard server runs on |
-| `refreshIntervalMinutes` | `30` | How often the server re-analyzes your browsing history |
-| `batchSize` | `200` | How many history entries to process per refresh cycle |
-| `historyDays` | `7` | How far back to look in your Chrome history |
-| `deepseekBaseUrl` | `https://api.deepseek.com` | API endpoint (change if using a proxy) |
-| `deepseekModel` | `deepseek-chat` | Which DeepSeek model to use for clustering |
+| `apiKey` | *(empty)* | Your API key (required for cloud providers, optional for Ollama) |
+| `baseUrl` | `https://api.deepseek.com` | Your LLM provider's API endpoint |
+| `model` | `deepseek-chat` | Which model to use |
+
+**Provider examples:**
+
+| Provider | `baseUrl` | `model` | Notes |
+|----------|-----------|---------|-------|
+| DeepSeek | `https://api.deepseek.com` | `deepseek-chat` | Cheapest. Recommended. |
+| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` | More expensive but very capable |
+| Groq | `https://api.groq.com/openai/v1` | `llama-3.1-8b-instant` | Fast, free tier available |
+| Together | `https://api.together.xyz/v1` | `meta-llama/Llama-3-8b-chat-hf` | Good variety of models |
+| OpenRouter | `https://openrouter.ai/api/v1` | `anthropic/claude-3-haiku` | Access to many providers |
+| Ollama | `http://localhost:11434/v1` | `llama3` | Fully local, free, no API key needed |
+
+Legacy field names (`deepseekApiKey`, `deepseekBaseUrl`, `deepseekModel`) still work for backward compatibility.
+
+### Custom Grouping Rules
+
+The `customPromptRules` field lets you teach the AI your personal preferences for how tabs should be grouped. This text is appended to the clustering prompt.
+
+**Examples:**
+
+```json
+{
+  "customPromptRules": "Always group my Google Docs tabs by project name, not by domain."
+}
+```
+
+```json
+{
+  "customPromptRules": "Treat all social media (X, Reddit, LinkedIn) as one mission called 'Doom Scrolling'. Group GitHub tabs by repository."
+}
+```
+
+```json
+{
+  "customPromptRules": "I'm a student. Group tabs by course/subject. Anything on Canvas or Gradescope is schoolwork."
+}
+```
+
+### Other Settings
+
+| Field | Default | What it does |
+|-------|---------|-------------|
+| `port` | `3456` | Local port for the dashboard server |
+| `refreshIntervalMinutes` | `30` | How often to re-analyze browsing history |
+| `batchSize` | `200` | History entries per analysis batch |
+| `historyDays` | `7` | How far back to look in Chrome history |
 
 ---
 
@@ -125,8 +174,8 @@ The config file lives at `~/.mission-control/config.json`. You can override any 
 | Layer | Technology |
 |-------|-----------|
 | Server | Node.js + Express |
-| Database | better-sqlite3 (fast, local, no setup) |
-| AI clustering | DeepSeek API (OpenAI-compatible) |
+| Database | better-sqlite3 |
+| AI clustering | Any OpenAI-compatible API |
 | Chrome extension | Manifest V3 |
 | Auto-start | macOS Launch Agent |
 
@@ -138,21 +187,21 @@ The config file lives at `~/.mission-control/config.json`. You can override any 
 tab-out/
 ├── extension/        # Chrome extension (new tab override)
 │   ├── manifest.json
-│   ├── newtab.html   # The iframe shell that loads the dashboard
-│   ├── newtab.js     # Bridge between the extension and the dashboard
-│   └── background.js # Service worker that updates the toolbar badge
-├── dashboard/        # The actual dashboard UI served by Express
+│   ├── newtab.html   # iframe shell that loads the dashboard
+│   ├── newtab.js     # postMessage bridge to chrome.tabs API
+│   └── background.js # Service worker for toolbar badge
+├── dashboard/        # Dashboard UI served by Express
 │   ├── index.html
 │   ├── style.css
-│   └── app.js        # All dashboard logic
-├── server/           # The Express backend
-│   ├── index.js      # Server entry point
-│   ├── config.js     # Config loader (reads ~/.mission-control/config.json)
-│   ├── db.js         # SQLite database setup and queries
+│   └── app.js
+├── server/           # Express backend
+│   ├── index.js      # Entry point + scheduler
+│   ├── config.js     # Config loader
+│   ├── db.js         # SQLite database
 │   ├── routes.js     # API endpoints
-│   └── clustering.js # DeepSeek AI integration
+│   └── clustering.js # LLM integration
 └── scripts/
-    └── install.js    # One-time setup script
+    └── install.js    # One-time setup
 ```
 
 ---

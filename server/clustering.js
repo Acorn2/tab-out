@@ -39,8 +39,8 @@ const {
 // ─────────────────────────────────────────────────────────────────────────────
 function getClient() {
   return new OpenAI({
-    apiKey:  config.deepseekApiKey,
-    baseURL: config.deepseekBaseUrl,
+    apiKey:  config.apiKey,
+    baseURL: config.baseUrl,
   });
 }
 
@@ -89,7 +89,7 @@ Rules:
   - "active"    = visited recently (within last 1-2 days), clearly in progress
   - "cooling"   = visited 3-7 days ago or slowing down, still relevant
   - "abandoned" = not visited in a while or appears incomplete/dropped
-
+${config.customPromptRules ? '\nAdditional rules from the user:\n' + config.customPromptRules + '\n' : ''}
 Respond ONLY with valid JSON in this exact format (no markdown, no explanation):
 {
   "missions": [
@@ -239,7 +239,7 @@ async function analyzeBrowsingHistory() {
   let responseText;
   try {
     const completion = await client.chat.completions.create({
-      model:       config.deepseekModel,
+      model:       config.model,
       temperature: 0.3,   // Low temperature = more consistent, less creative output
       max_tokens:  4000,  // Enough for ~20 missions with summaries
       messages: [
@@ -367,7 +367,7 @@ IMPORTANT — granularity rules:
 - **localhost tabs are vibe coding project previews.** Group localhost tabs by PORT number — each port is a different project. Name the mission after the page title or what the project appears to be (e.g., "Brand DNA Tool (localhost:5173)"). If multiple localhost tabs share the same port, they're the same project.
 - **Tools and platforms that are clearly separate activities should not be lumped together.** "OpenClaw" and "Claude Code docs" and "Paperclip hiring platform" are three different things — give each its own mission unless the user clearly opened them as part of the same research session.
 - Prefer MORE granular missions over fewer broad ones. 15 specific missions is better than 5 vague ones.
-
+${config.customPromptRules ? '\nAdditional rules from the user:\n' + config.customPromptRules + '\n' : ''}
 Respond ONLY with valid JSON in this exact format (no markdown, no explanation):
 {
   "personalMessage": "Your witty one-liner about this person's tabs goes here.",
@@ -454,7 +454,7 @@ async function clusterOpenTabs(tabs) {
   let responseText;
   try {
     const completion = await client.chat.completions.create({
-      model:       config.deepseekModel,
+      model:       config.model,
       temperature: 0.3,   // Low temperature = consistent, predictable output
       max_tokens:  3000,  // Enough for up to ~15 missions
       messages: [{ role: 'user', content: prompt }],

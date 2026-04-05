@@ -23,27 +23,49 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 // Default values — used whenever a key is absent from the config file.
 const DEFAULTS = {
   // Which local port the web server listens on.
-  // 3456 is arbitrary but unlikely to conflict with other apps.
   port: 3456,
 
   // How often (in minutes) the server re-reads Chrome history and re-clusters.
   refreshIntervalMinutes: 30,
 
   // How many history entries to pull per refresh batch.
-  // Keeping this reasonable avoids hammering the AI API with huge requests.
   batchSize: 200,
 
   // How many days back to look in Chrome's browsing history.
   historyDays: 7,
 
-  // DeepSeek API key — no default, must come from config file.
-  deepseekApiKey: '',
+  // ── LLM Provider Settings ──
+  // Works with ANY OpenAI-compatible API: DeepSeek, OpenAI, Groq, Together,
+  // Ollama (local), OpenRouter, Anthropic (via proxy), etc.
+  // DeepSeek is recommended for cost (fractions of a cent per call).
 
-  // The base URL for DeepSeek's API (compatible with OpenAI's SDK).
-  deepseekBaseUrl: 'https://api.deepseek.com',
+  // Your API key — required for cloud providers, optional for local (Ollama)
+  apiKey: '',
 
-  // Which DeepSeek model to call for clustering.
-  deepseekModel: 'deepseek-chat',
+  // The base URL for your LLM provider's API
+  // Examples:
+  //   DeepSeek:    https://api.deepseek.com
+  //   OpenAI:      https://api.openai.com/v1
+  //   Groq:        https://api.groq.com/openai/v1
+  //   Together:    https://api.together.xyz/v1
+  //   OpenRouter:  https://openrouter.ai/api/v1
+  //   Ollama:      http://localhost:11434/v1
+  baseUrl: 'https://api.deepseek.com',
+
+  // Which model to use for clustering
+  // Examples: deepseek-chat, gpt-4o-mini, llama-3.1-8b-instant, etc.
+  model: 'deepseek-chat',
+
+  // ── Legacy field names (still supported for backward compatibility) ──
+  // deepseekApiKey, deepseekBaseUrl, deepseekModel are mapped to the new names
+
+  // ── Custom Prompt ──
+  // If set, this text is APPENDED to the default clustering prompt.
+  // Use it to customize how tabs are grouped. Examples:
+  //   "Always group my Google Docs tabs by project name, not by domain."
+  //   "Treat all social media as one mission called 'Doom Scrolling'."
+  //   "If I have tabs from the same GitHub repo, group them together."
+  customPromptRules: '',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,7 +92,14 @@ function loadConfig() {
   }
 
   // Merge: defaults first, then file values on top.
-  return Object.assign({}, DEFAULTS, fileConfig);
+  const merged = Object.assign({}, DEFAULTS, fileConfig);
+
+  // Backward compatibility: map old deepseek-specific field names to new generic ones
+  if (fileConfig.deepseekApiKey && !fileConfig.apiKey) merged.apiKey = fileConfig.deepseekApiKey;
+  if (fileConfig.deepseekBaseUrl && !fileConfig.baseUrl) merged.baseUrl = fileConfig.deepseekBaseUrl;
+  if (fileConfig.deepseekModel && !fileConfig.model) merged.model = fileConfig.deepseekModel;
+
+  return merged;
 }
 
 // Export both the loaded config object and the path constants so other modules
