@@ -508,7 +508,7 @@ function renderOpenTabsMissionCard(mission, missionIndex) {
     const display = label.length > 45 ? label.slice(0, 45) + '…' : label;
     const dupeCount = dupeMap[tab.url];
     const dupeTag = dupeCount ? ` <span style="color:var(--accent-amber);font-weight:600">(${dupeCount}x)</span>` : '';
-    return `<span class="page-chip clickable" data-action="focus-tab" data-tab-url="${(tab.url || '').replace(/"/g, '&quot;')}" title="${label.replace(/"/g, '&quot;')}">${display}${dupeTag}</span>`;
+    return `<span class="page-chip clickable" data-action="focus-tab" data-tab-url="${(tab.url || '').replace(/"/g, '&quot;')}" title="${label.replace(/"/g, '&quot;')}">${display}${dupeTag}<button class="chip-close" data-action="close-single-tab" data-tab-url="${(tab.url || '').replace(/"/g, '&quot;')}" title="Close this tab">&times;</button></span>`;
   }).join('') + (extraCount > 0 ? `<span class="page-chip">+${extraCount} more</span>` : '');
 
   // Use a stable ID based on mission name (not array index, which shifts when
@@ -840,7 +840,7 @@ function renderDomainCard(group, groupIndex) {
       ? ` <span style="color:var(--accent-amber);font-weight:600">(${count}x)</span>`
       : '';
     const chipStyle = count > 1 ? ' style="border-color: rgba(200, 113, 58, 0.3);"' : '';
-    return `<span class="page-chip clickable"${chipStyle} data-action="focus-tab" data-tab-url="${(tab.url || '').replace(/"/g, '&quot;')}" title="${label.replace(/"/g, '&quot;')}">${display}${dupeTag}</span>`;
+    return `<span class="page-chip clickable"${chipStyle} data-action="focus-tab" data-tab-url="${(tab.url || '').replace(/"/g, '&quot;')}" title="${label.replace(/"/g, '&quot;')}">${display}${dupeTag}<button class="chip-close" data-action="close-single-tab" data-tab-url="${(tab.url || '').replace(/"/g, '&quot;')}" title="Close this tab">&times;</button></span>`;
   }).join('') + (extraCount > 0 ? `<span class="page-chip">+${extraCount} more</span>` : '');
 
   // Use amber status bar if there are duplicates
@@ -1255,6 +1255,29 @@ document.addEventListener('click', async (e) => {
     if (tabUrl) {
       await sendToExtension('focusTab', { url: tabUrl });
     }
+    return;
+  }
+
+  // ---- close-single-tab: close one specific tab by URL ----
+  if (action === 'close-single-tab') {
+    e.stopPropagation(); // don't trigger the parent chip's focus-tab
+    const tabUrl = actionEl.dataset.tabUrl;
+    if (!tabUrl) return;
+
+    await sendToExtension('closeTabs', { urls: [tabUrl] });
+    playCloseSound();
+    await fetchOpenTabs();
+
+    // Remove the chip from the DOM
+    const chip = actionEl.closest('.page-chip');
+    if (chip) {
+      chip.style.transition = 'opacity 0.2s, transform 0.2s';
+      chip.style.opacity = '0';
+      chip.style.transform = 'scale(0.8)';
+      setTimeout(() => chip.remove(), 200);
+    }
+
+    showToast('Tab closed');
     return;
   }
 

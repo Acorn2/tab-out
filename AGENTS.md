@@ -117,17 +117,40 @@ Tell the user:
 
 ## Step 7 — Install the Chrome extension
 
-The user needs to do this part manually in Chrome. Walk them through it clearly:
+This is the one step that requires manual action from the user. Make it as easy as possible:
 
-1. Go to `chrome://extensions`
-2. Enable **Developer mode** (top-right toggle)
-3. Click **Load unpacked**
-4. Select the `extension/` folder inside the cloned repo
+**First**, tell the user the full path they'll need. Print it clearly:
+```bash
+echo "Extension folder: $(cd extension && pwd)"
+```
 
-Open the extensions page for them:
+**Then**, copy the path to their clipboard so they can paste it in the file picker:
+- macOS: `cd extension && pwd | pbcopy && echo "Path copied to clipboard"`
+- Linux: `cd extension && pwd | xclip -selection clipboard 2>/dev/null || pwd | xsel --clipboard 2>/dev/null || echo "Path: $(pwd)"`
+- Windows: `cd extension && echo %CD% | clip`
+
+**Then**, open the extensions page:
 ```bash
 open "chrome://extensions"
 ```
+
+**Then**, walk the user through it step by step. Say something like:
+
+> I've copied the extension folder path to your clipboard. Now:
+>
+> 1. You should see Chrome's extensions page. In the **top-right corner**, toggle on **Developer mode** (it's a switch).
+> 2. Once Developer mode is on, you'll see a button called **"Load unpacked"** appear in the top-left. Click it.
+> 3. A file picker will open. **Press Cmd+Shift+G** (Mac) or **Ctrl+L** (Windows/Linux) to open the "Go to folder" bar, then **paste** the path I copied (Cmd+V / Ctrl+V) and press Enter.
+> 4. Click **"Select"** or **"Open"** — the extension will install immediately.
+>
+> You should see "Tab Out" appear in your extensions list.
+
+**Also**, open Finder/Explorer directly to the extension folder as a fallback:
+- macOS: `open extension/`
+- Linux: `xdg-open extension/`
+- Windows: `explorer extension\\`
+
+This way the user can also just drag or navigate to it visually if the clipboard approach doesn't work.
 
 ---
 

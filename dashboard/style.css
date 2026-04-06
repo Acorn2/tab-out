@@ -393,8 +393,35 @@ header {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  max-width: 240px;
   border: 1px solid rgba(154, 145, 138, 0.12);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chip-close {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0 0 2px;
+  opacity: 0.5;
+  transition: opacity 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.page-chip:hover .chip-close {
+  display: inline;
+}
+
+.chip-close:hover {
+  opacity: 1;
+  color: var(--status-abandoned);
 }
 
 .page-chip.clickable {
