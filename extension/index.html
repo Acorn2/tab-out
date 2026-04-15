@@ -69,9 +69,16 @@
       <div class="section-header">
         <h2 id="openTabsSectionTitle"></h2>
         <div class="section-line"></div>
-        <div class="section-count" id="openTabsSectionCount"></div>
+        <div class="section-tools">
+          <div class="view-switcher" id="openTabsViewSwitcher" aria-label="Open tabs view">
+            <button type="button" class="view-switcher-btn" data-action="set-open-tabs-view" data-view="domains" id="openTabsDomainViewBtn"></button>
+            <button type="button" class="view-switcher-btn" data-action="set-open-tabs-view" data-view="windows" id="openTabsWindowViewBtn"></button>
+          </div>
+          <div class="section-count" id="openTabsSectionCount"></div>
+        </div>
       </div>
       <div class="missions" id="openTabsMissions"></div>
+      <div class="window-groups" id="openTabsWindows" style="display:none"></div>
     </div>
 
     <!-- RIGHT COLUMN: Saved for Later checklist -->

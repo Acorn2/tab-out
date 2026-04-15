@@ -36,6 +36,8 @@ let isStashMenuOpen = false;
 let isSettingsModalOpen = false;
 let currentSettingsPanel = 'appearance';
 let quickLinksOpenMode = 'current-tab';
+let currentOpenTabsView = 'domains';
+let draggedWindowTabState = null;
 
 const LANGUAGE_STORAGE_KEY = 'uiLanguage';
 const THEME_STORAGE_KEY = 'uiTheme';
@@ -44,6 +46,7 @@ const BACKGROUND_IMAGE_STORAGE_KEY = 'customBackgroundImage';
 const BACKGROUND_COLOR_STORAGE_KEY = 'customBackgroundColor';
 const TAB_SESSIONS_STORAGE_KEY = 'tabSessions';
 const QUICK_LINKS_OPEN_MODE_STORAGE_KEY = 'quickLinksOpenMode';
+const OPEN_TABS_VIEW_STORAGE_KEY = 'openTabsView';
 const MAX_BACKGROUND_EDGE = 2200;
 const MAX_BACKGROUND_STORAGE_LENGTH = 3_500_000;
 const DEFAULT_BACKGROUND_COLOR = '#f8f5f0';
@@ -69,6 +72,9 @@ const MESSAGES = {
     tabOutDupeBanner: count => `你打开了 <strong>${count}</strong> 个 Tab Out 标签页。只保留当前这个吗？`,
     closeExtras: '关闭多余标签',
     openTabs: '打开中的标签',
+    openTabsViewLabel: '切换标签视图',
+    openTabsViewDomains: '域名',
+    openTabsViewWindows: '窗口',
     quickLinksTitle: '常用入口',
     quickLinksSubtitle: '',
     quickLinksAddButton: '添加入口',
@@ -160,6 +166,7 @@ const MESSAGES = {
     inboxZeroTitle: '标签清零了。',
     inboxZeroSubtitle: '现在轻松多了。',
     domainsCount: count => `${count} 个域名`,
+    windowsCount: count => `${count} 个窗口`,
     itemsCount: count => `${count} 项`,
     tabsOpenBadge: count => `${count} 个标签`,
     duplicateBadge: count => `${count} 个重复`,
@@ -179,6 +186,9 @@ const MESSAGES = {
     noResults: '没有结果',
     toastClosedExtraTabOutTabs: '已关闭多余的 Tab Out 标签页',
     toastTabClosed: '标签已关闭',
+    toastTabReordered: '标签顺序已更新',
+    toastTabReorderFailed: '调整标签顺序失败',
+    toastTabReorderSameWindowOnly: '当前先支持同一窗口内拖拽排序',
     toastSaveFailed: '保存失败',
     toastSavedForLater: '已保存到稍后处理',
     toastClosedGroupTabs: (count, groupLabel) => `已从 ${groupLabel} 关闭 ${count} 个标签`,
@@ -193,6 +203,12 @@ const MESSAGES = {
     substackBy: name => `${capitalize(name)} 的 Substack`,
     githubPages: name => `${capitalize(name)}（GitHub Pages）`,
     localFiles: '本地文件',
+    currentWindowTitle: '当前窗口',
+    windowTitle: index => `窗口 ${index}`,
+    windowPosition: index => `第 ${index} 个`,
+    windowViewHint: '按浏览器真实顺序排列，可直接拖拽调整',
+    activeTabBadge: '当前',
+    pinnedTabBadge: '固定',
   },
   'en-US': {
     languageName: 'English',
@@ -204,6 +220,9 @@ const MESSAGES = {
     tabOutDupeBanner: count => `You have <strong>${count}</strong> Tab Out tabs open. Keep just this one?`,
     closeExtras: 'Close extras',
     openTabs: 'Open tabs',
+    openTabsViewLabel: 'Switch tab view',
+    openTabsViewDomains: 'Domains',
+    openTabsViewWindows: 'Windows',
     quickLinksTitle: 'Quick links',
     quickLinksSubtitle: '',
     quickLinksAddButton: 'Add link',
@@ -295,6 +314,7 @@ const MESSAGES = {
     inboxZeroTitle: 'Inbox zero, but for tabs.',
     inboxZeroSubtitle: "You're free.",
     domainsCount: count => `${count} domain${count !== 1 ? 's' : ''}`,
+    windowsCount: count => `${count} window${count !== 1 ? 's' : ''}`,
     itemsCount: count => `${count} item${count !== 1 ? 's' : ''}`,
     tabsOpenBadge: count => `${count} tab${count !== 1 ? 's' : ''} open`,
     duplicateBadge: count => `${count} duplicate${count !== 1 ? 's' : ''}`,
@@ -314,6 +334,9 @@ const MESSAGES = {
     noResults: 'No results',
     toastClosedExtraTabOutTabs: 'Closed extra Tab Out tabs',
     toastTabClosed: 'Tab closed',
+    toastTabReordered: 'Tab order updated',
+    toastTabReorderFailed: 'Failed to reorder tab',
+    toastTabReorderSameWindowOnly: 'For now, drag sorting only works inside the same window',
     toastSaveFailed: 'Failed to save tab',
     toastSavedForLater: 'Saved for later',
     toastClosedGroupTabs: (count, groupLabel) => `Closed ${count} tab${count !== 1 ? 's' : ''} from ${groupLabel}`,
@@ -328,6 +351,12 @@ const MESSAGES = {
     substackBy: name => `${capitalize(name)}'s Substack`,
     githubPages: name => `${capitalize(name)} (GitHub Pages)`,
     localFiles: 'Local Files',
+    currentWindowTitle: 'Current window',
+    windowTitle: index => `Window ${index}`,
+    windowPosition: index => `#${index}`,
+    windowViewHint: 'Shown in real browser order. Drag to rearrange.',
+    activeTabBadge: 'Active',
+    pinnedTabBadge: 'Pinned',
   },
 };
 
@@ -628,6 +657,37 @@ async function setQuickLinksOpenModePreference(mode) {
   await chrome.storage.local.set({ [QUICK_LINKS_OPEN_MODE_STORAGE_KEY]: quickLinksOpenMode });
 }
 
+async function loadOpenTabsViewPreference() {
+  try {
+    const { [OPEN_TABS_VIEW_STORAGE_KEY]: storedView = 'domains' } = await chrome.storage.local.get(OPEN_TABS_VIEW_STORAGE_KEY);
+    currentOpenTabsView = storedView === 'windows' ? 'windows' : 'domains';
+  } catch {
+    currentOpenTabsView = 'domains';
+  }
+}
+
+async function setOpenTabsViewPreference(view) {
+  currentOpenTabsView = view === 'windows' ? 'windows' : 'domains';
+  await chrome.storage.local.set({ [OPEN_TABS_VIEW_STORAGE_KEY]: currentOpenTabsView });
+}
+
+function syncOpenTabsViewControls() {
+  const configs = [
+    { id: 'openTabsDomainViewBtn', view: 'domains', label: t('openTabsViewDomains') },
+    { id: 'openTabsWindowViewBtn', view: 'windows', label: t('openTabsViewWindows') },
+  ];
+
+  for (const config of configs) {
+    const button = document.getElementById(config.id);
+    if (!button) continue;
+    const isActive = currentOpenTabsView === config.view;
+    button.textContent = config.label;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    button.title = config.label;
+  }
+}
+
 function syncQuickLinkOpenModeControls() {
   const configs = [
     {
@@ -661,6 +721,9 @@ function applyStaticText() {
 
   const quickLinksTitle = document.getElementById('quickLinksTitle');
   const quickLinksSubtitle = document.getElementById('quickLinksSubtitle');
+  const openTabsViewSwitcher = document.getElementById('openTabsViewSwitcher');
+  const openTabsDomainViewBtn = document.getElementById('openTabsDomainViewBtn');
+  const openTabsWindowViewBtn = document.getElementById('openTabsWindowViewBtn');
   const stashTrigger = document.getElementById('stashMenuTrigger');
   const sessionTrigger = document.getElementById('sessionFabTrigger');
   const settingsTrigger = document.getElementById('settingsModalTrigger');
@@ -703,6 +766,8 @@ function applyStaticText() {
 
   if (quickLinksTitle) quickLinksTitle.textContent = t('quickLinksTitle');
   if (quickLinksSubtitle) quickLinksSubtitle.textContent = t('quickLinksSubtitle');
+  if (openTabsViewSwitcher) openTabsViewSwitcher.setAttribute('aria-label', t('openTabsViewLabel'));
+  if (openTabsDomainViewBtn || openTabsWindowViewBtn) syncOpenTabsViewControls();
   if (stashTrigger) {
     stashTrigger.title = t('stashToolLabel');
     stashTrigger.setAttribute('aria-label', t('stashToolLabel'));
@@ -769,6 +834,7 @@ function applyStaticText() {
   syncLanguageSwitcher();
   syncBackgroundControls();
   syncQuickLinkOpenModeControls();
+  syncOpenTabsViewControls();
   setCurrentSettingsPanel(currentSettingsPanel);
   syncQuickLinkModalText();
 }
@@ -1114,7 +1180,10 @@ async function fetchOpenTabs() {
       url:      t.url,
       title:    t.title,
       windowId: t.windowId,
+      index:    Number.isFinite(t.index) ? t.index : 0,
+      favIconUrl: t.favIconUrl,
       active:   t.active,
+      pinned:   !!t.pinned,
       // Flag Tab Out's own pages so we can detect duplicate new tabs
       isTabOut: t.url === newtabUrl || t.url === 'chrome://newtab/',
     }));
@@ -1210,6 +1279,36 @@ async function focusTab(url) {
   const match = matches.find(t => t.windowId !== currentWindow.id) || matches[0];
   await chrome.tabs.update(match.id, { active: true });
   await chrome.windows.update(match.windowId, { focused: true });
+}
+
+async function focusTabById(tabId) {
+  if (!Number.isFinite(tabId)) return;
+  const allTabs = await chrome.tabs.query({});
+  const match = allTabs.find(tab => tab.id === tabId);
+  if (!match) return;
+
+  await chrome.tabs.update(match.id, { active: true });
+  await chrome.windows.update(match.windowId, { focused: true });
+}
+
+async function moveTabWithinWindow(draggedTabId, targetTabId, insertAfter = false) {
+  if (!Number.isFinite(draggedTabId) || !Number.isFinite(targetTabId) || draggedTabId === targetTabId) return false;
+
+  const allTabs = await chrome.tabs.query({});
+  const draggedTab = allTabs.find(tab => tab.id === draggedTabId);
+  const targetTab = allTabs.find(tab => tab.id === targetTabId);
+  if (!draggedTab || !targetTab) return false;
+  if (draggedTab.windowId !== targetTab.windowId) {
+    throw new Error('cross-window-not-supported');
+  }
+
+  let nextIndex = targetTab.index + (insertAfter ? 1 : 0);
+  if (draggedTab.index < nextIndex) nextIndex -= 1;
+  if (draggedTab.index === nextIndex) return false;
+
+  await chrome.tabs.move(draggedTab.id, { windowId: draggedTab.windowId, index: nextIndex });
+  await fetchOpenTabs();
+  return true;
 }
 
 /**
@@ -1963,6 +2062,103 @@ function renderOpenTabsSectionCount(domainCount, totalTabs) {
   return `${t('domainsCount', domainCount)} &nbsp;&middot;&nbsp; <button class="action-btn close-tabs" data-action="close-all-open-tabs" style="font-size:11px;padding:3px 10px;">${ICONS.close} ${t('closeAllTabsAction', totalTabs)}</button>`;
 }
 
+function renderOpenTabsWindowSectionCount(windowCount, totalTabs) {
+  return `${t('windowsCount', windowCount)} &nbsp;&middot;&nbsp; <button class="action-btn close-tabs" data-action="close-all-open-tabs" style="font-size:11px;padding:3px 10px;">${ICONS.close} ${t('closeAllTabsAction', totalTabs)}</button>`;
+}
+
+function getDisplayUrl(url) {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'file:') return t('localFiles');
+    return `${parsed.hostname.replace(/^www\./, '')}${parsed.pathname === '/' ? '' : parsed.pathname}`;
+  } catch {
+    return url;
+  }
+}
+
+function buildWindowGroups(tabs, currentWindowId) {
+  const grouped = new Map();
+
+  for (const tab of tabs) {
+    if (!grouped.has(tab.windowId)) grouped.set(tab.windowId, []);
+    grouped.get(tab.windowId).push(tab);
+  }
+
+  return [...grouped.entries()]
+    .map(([windowId, windowTabs]) => ({
+      windowId,
+      isCurrent: windowId === currentWindowId,
+      tabs: [...windowTabs].sort((a, b) => (a.index ?? 0) - (b.index ?? 0)),
+    }))
+    .sort((a, b) => {
+      if (a.isCurrent !== b.isCurrent) return a.isCurrent ? -1 : 1;
+      return a.windowId - b.windowId;
+    })
+    .map((group, index) => ({
+      ...group,
+      order: index + 1,
+    }));
+}
+
+function renderWindowCard(group) {
+  const title = group.isCurrent ? t('currentWindowTitle') : t('windowTitle', group.order);
+  const badge = group.isCurrent ? t('windowViewHint') : '';
+  const rows = group.tabs.map((tab, rowIndex) => {
+    const label = cleanTitle(smartTitle(stripTitleNoise(tab.title || ''), tab.url), '');
+    const safeTitle = escapeHtml(label || tab.url || '');
+    const safeMeta = escapeHtml(getDisplayUrl(tab.url));
+    let faviconUrl = '';
+
+    try {
+      const parsed = new URL(tab.url);
+      const domain = parsed.hostname;
+      faviconUrl = escapeHtml(tab.favIconUrl || (domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=32` : ''));
+    } catch {
+      faviconUrl = escapeHtml(tab.favIconUrl || '');
+    }
+
+    return `
+      <div class="window-tab-item${tab.active ? ' is-active' : ''}" draggable="true" data-action="focus-tab-id" data-tab-id="${tab.id}" data-window-id="${group.windowId}" data-tab-index="${tab.index}">
+        <div class="window-tab-order">${rowIndex + 1}</div>
+        <div class="window-tab-grip" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        ${faviconUrl ? `<img class="window-tab-favicon" src="${faviconUrl}" alt="" data-hide-on-error="true">` : '<span class="window-tab-favicon window-tab-favicon-fallback"></span>'}
+        <div class="window-tab-copy">
+          <div class="window-tab-title-row">
+            <div class="window-tab-title">${safeTitle}</div>
+            ${tab.active ? `<span class="window-tab-badge is-active">${escapeHtml(t('activeTabBadge'))}</span>` : ''}
+            ${tab.pinned ? `<span class="window-tab-badge">${escapeHtml(t('pinnedTabBadge'))}</span>` : ''}
+          </div>
+          <div class="window-tab-meta">${safeMeta}</div>
+        </div>
+        <div class="window-tab-actions">
+          <button class="window-tab-action" data-action="defer-single-tab-id" data-tab-id="${tab.id}" title="${t('saveForLaterTitle')}">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" /></svg>
+          </button>
+          <button class="window-tab-action" data-action="close-single-tab-id" data-tab-id="${tab.id}" title="${t('closeThisTabTitle')}">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <article class="window-card" data-window-id="${group.windowId}">
+      <div class="window-card-header">
+        <div>
+          <div class="window-card-title">${escapeHtml(title)}</div>
+          <div class="window-card-subtitle">${escapeHtml(t('tabsOpenBadge', group.tabs.length))}</div>
+        </div>
+        ${badge ? `<div class="window-card-note">${escapeHtml(badge)}</div>` : ''}
+      </div>
+      <div class="window-tab-list" data-window-id="${group.windowId}">
+        ${rows}
+      </div>
+    </article>`;
+}
+
 
 /* ----------------------------------------------------------------
    OVERFLOW CHIPS ("+N more" expand button in domain cards)
@@ -2336,6 +2532,8 @@ async function renderStaticDashboard() {
 
   // --- Fetch tabs ---
   await fetchOpenTabs();
+  const currentWindow = await chrome.windows.getCurrent().catch(() => null);
+  const currentWindowId = currentWindow?.id || 0;
   const realTabs = getRealTabs();
   lastRealTabCount = realTabs.length;
 
@@ -2454,13 +2652,30 @@ async function renderStaticDashboard() {
   // --- Render domain cards ---
   const openTabsSection      = document.getElementById('openTabsSection');
   const openTabsMissionsEl   = document.getElementById('openTabsMissions');
+  const openTabsWindowsEl    = document.getElementById('openTabsWindows');
   const openTabsSectionCount = document.getElementById('openTabsSectionCount');
   const openTabsSectionTitle = document.getElementById('openTabsSectionTitle');
+  const windowGroups = buildWindowGroups(realTabs, currentWindowId);
 
   if (domainGroups.length > 0 && openTabsSection) {
     if (openTabsSectionTitle) openTabsSectionTitle.textContent = t('openTabs');
-    openTabsSectionCount.innerHTML = renderOpenTabsSectionCount(domainGroups.length, realTabs.length);
-    openTabsMissionsEl.innerHTML = domainGroups.map(g => renderDomainCard(g)).join('');
+    if (openTabsSectionCount) {
+      openTabsSectionCount.innerHTML = currentOpenTabsView === 'windows'
+        ? renderOpenTabsWindowSectionCount(windowGroups.length, realTabs.length)
+        : renderOpenTabsSectionCount(domainGroups.length, realTabs.length);
+    }
+    if (openTabsMissionsEl) {
+      openTabsMissionsEl.style.display = currentOpenTabsView === 'windows' ? 'none' : 'block';
+      if (currentOpenTabsView !== 'windows') {
+        openTabsMissionsEl.innerHTML = domainGroups.map(g => renderDomainCard(g)).join('');
+      }
+    }
+    if (openTabsWindowsEl) {
+      openTabsWindowsEl.style.display = currentOpenTabsView === 'windows' ? 'grid' : 'none';
+      if (currentOpenTabsView === 'windows') {
+        openTabsWindowsEl.innerHTML = windowGroups.map(group => renderWindowCard(group)).join('');
+      }
+    }
     openTabsSection.style.display = 'block';
   } else if (openTabsSection) {
     openTabsSection.style.display = 'none';
@@ -2504,6 +2719,14 @@ document.addEventListener('click', async (e) => {
     const language = actionEl.dataset.language;
     if (!language || language === currentLanguage) return;
     await setLanguagePreference(language);
+    await renderDashboard();
+    return;
+  }
+
+  if (action === 'set-open-tabs-view') {
+    const view = actionEl.dataset.view;
+    if (!view || view === currentOpenTabsView) return;
+    await setOpenTabsViewPreference(view);
     await renderDashboard();
     return;
   }
@@ -2701,6 +2924,13 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
+  if (action === 'focus-tab-id') {
+    const tabId = Number(actionEl.dataset.tabId);
+    if (!Number.isFinite(tabId)) return;
+    await focusTabById(tabId);
+    return;
+  }
+
   if (action === 'edit-quick-link') {
     e.preventDefault();
     e.stopPropagation();
@@ -2798,6 +3028,19 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
+  if (action === 'close-single-tab-id') {
+    e.stopPropagation();
+    const tabId = Number(actionEl.dataset.tabId);
+    if (!Number.isFinite(tabId)) return;
+
+    await chrome.tabs.remove(tabId);
+    await fetchOpenTabs();
+    await renderDashboard();
+    playCloseSound();
+    showToast(t('toastTabClosed'));
+    return;
+  }
+
   // ---- Save a single tab for later (then close it) ----
   if (action === 'defer-single-tab') {
     e.stopPropagation();
@@ -2831,6 +3074,29 @@ document.addEventListener('click', async (e) => {
 
     showToast(t('toastSavedForLater'));
     await renderDeferredColumn();
+    return;
+  }
+
+  if (action === 'defer-single-tab-id') {
+    e.stopPropagation();
+    const tabId = Number(actionEl.dataset.tabId);
+    if (!Number.isFinite(tabId)) return;
+
+    const tab = openTabs.find(item => item.id === tabId);
+    if (!tab?.url) return;
+
+    try {
+      await saveTabForLater({ url: tab.url, title: tab.title || tab.url });
+    } catch (err) {
+      console.error('[tab-out] Failed to save tab:', err);
+      showToast(t('toastSaveFailed'));
+      return;
+    }
+
+    await chrome.tabs.remove(tabId);
+    await fetchOpenTabs();
+    await renderDashboard();
+    showToast(t('toastSavedForLater'));
     return;
   }
 
@@ -3112,6 +3378,97 @@ document.addEventListener('input', async (e) => {
   }
 });
 
+function clearWindowDragIndicators() {
+  document.querySelectorAll('.window-tab-item.is-drop-before, .window-tab-item.is-drop-after').forEach(item => {
+    item.classList.remove('is-drop-before', 'is-drop-after');
+  });
+}
+
+document.addEventListener('dragstart', (e) => {
+  if (currentOpenTabsView !== 'windows') return;
+  const item = e.target.closest('.window-tab-item');
+  if (!item) return;
+
+  const tabId = Number(item.dataset.tabId);
+  const windowId = Number(item.dataset.windowId);
+  const tabIndex = Number(item.dataset.tabIndex);
+  if (!Number.isFinite(tabId) || !Number.isFinite(windowId) || !Number.isFinite(tabIndex)) return;
+
+  draggedWindowTabState = { tabId, windowId, tabIndex };
+  item.classList.add('is-dragging');
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(tabId));
+  }
+});
+
+document.addEventListener('dragover', (e) => {
+  if (currentOpenTabsView !== 'windows' || !draggedWindowTabState) return;
+  const item = e.target.closest('.window-tab-item');
+  if (!item) return;
+
+  const targetTabId = Number(item.dataset.tabId);
+  const targetWindowId = Number(item.dataset.windowId);
+  if (!Number.isFinite(targetTabId) || !Number.isFinite(targetWindowId) || targetTabId === draggedWindowTabState.tabId) return;
+
+  e.preventDefault();
+  clearWindowDragIndicators();
+
+  if (targetWindowId !== draggedWindowTabState.windowId) return;
+
+  const rect = item.getBoundingClientRect();
+  const insertAfter = e.clientY > rect.top + rect.height / 2;
+  item.classList.add(insertAfter ? 'is-drop-after' : 'is-drop-before');
+});
+
+document.addEventListener('drop', async (e) => {
+  if (currentOpenTabsView !== 'windows' || !draggedWindowTabState) return;
+  const item = e.target.closest('.window-tab-item');
+  if (!item) return;
+
+  e.preventDefault();
+  const targetTabId = Number(item.dataset.tabId);
+  const targetWindowId = Number(item.dataset.windowId);
+  if (!Number.isFinite(targetTabId) || !Number.isFinite(targetWindowId) || targetTabId === draggedWindowTabState.tabId) {
+    clearWindowDragIndicators();
+    draggedWindowTabState = null;
+    return;
+  }
+
+  const rect = item.getBoundingClientRect();
+  const insertAfter = e.clientY > rect.top + rect.height / 2;
+  clearWindowDragIndicators();
+
+  if (targetWindowId !== draggedWindowTabState.windowId) {
+    draggedWindowTabState = null;
+    showToast(t('toastTabReorderSameWindowOnly'));
+    return;
+  }
+
+  try {
+    const moved = await moveTabWithinWindow(draggedWindowTabState.tabId, targetTabId, insertAfter);
+    if (moved) {
+      await renderDashboard();
+      showToast(t('toastTabReordered'));
+    }
+  } catch (err) {
+    console.warn('[tab-out] Could not reorder tab:', err);
+    showToast(
+      err instanceof Error && err.message === 'cross-window-not-supported'
+        ? t('toastTabReorderSameWindowOnly')
+        : t('toastTabReorderFailed')
+    );
+  } finally {
+    draggedWindowTabState = null;
+  }
+});
+
+document.addEventListener('dragend', () => {
+  document.querySelectorAll('.window-tab-item.is-dragging').forEach(item => item.classList.remove('is-dragging'));
+  clearWindowDragIndicators();
+  draggedWindowTabState = null;
+});
+
 
 /* ----------------------------------------------------------------
    INITIALIZE
@@ -3121,6 +3478,7 @@ async function initializeApp() {
   await loadThemePreference();
   await loadBackgroundPreference();
   await loadQuickLinksOpenModePreference();
+  await loadOpenTabsViewPreference();
   await renderDashboard();
 }
 
