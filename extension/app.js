@@ -27,13 +27,36 @@
 let openTabs = [];
 let quickLinks = [];
 let currentLanguage = 'zh-CN';
+let currentTheme = 'light';
 let customBackgroundImage = '';
+let customBackgroundColor = '';
+let lastRealTabCount = 0;
+let isSessionPanelOpen = false;
+let isStashMenuOpen = false;
+let isSettingsModalOpen = false;
+let currentSettingsPanel = 'appearance';
+let quickLinksOpenMode = 'current-tab';
 
 const LANGUAGE_STORAGE_KEY = 'uiLanguage';
+const THEME_STORAGE_KEY = 'uiTheme';
 const QUICK_LINKS_STORAGE_KEY = 'quickLinks';
 const BACKGROUND_IMAGE_STORAGE_KEY = 'customBackgroundImage';
+const BACKGROUND_COLOR_STORAGE_KEY = 'customBackgroundColor';
+const TAB_SESSIONS_STORAGE_KEY = 'tabSessions';
+const QUICK_LINKS_OPEN_MODE_STORAGE_KEY = 'quickLinksOpenMode';
 const MAX_BACKGROUND_EDGE = 2200;
 const MAX_BACKGROUND_STORAGE_LENGTH = 3_500_000;
+const DEFAULT_BACKGROUND_COLOR = '#f8f5f0';
+const DEFAULT_DARK_BACKGROUND_COLOR = '#10161d';
+const BACKGROUND_COLOR_PRESETS = [
+  '#eef2f9',
+  '#dff1ff',
+  '#f4e3f7',
+  '#e7f6d8',
+  '#fff3b8',
+  '#eadff2',
+  '#f6ebdf',
+];
 
 const MESSAGES = {
   'zh-CN': {
@@ -47,10 +70,10 @@ const MESSAGES = {
     closeExtras: '关闭多余标签',
     openTabs: '打开中的标签',
     quickLinksTitle: '常用入口',
-    quickLinksSubtitle: '把每天都会打开的网站放在这里，从新标签页一步直达。',
+    quickLinksSubtitle: '',
     quickLinksAddButton: '添加入口',
-    quickLinksEmptyTitle: '先固定几个常用网站吧',
-    quickLinksEmptySubtitle: '把飞书、GitHub、邮箱或项目后台放进来，打开新标签页就能直接进入。',
+    quickLinksEmptyTitle: '固定几个常用网站，打开更快。',
+    quickLinksEmptySubtitle: '',
     quickLinkAddCardTitle: '新增快捷入口',
     quickLinkAddCardSubtitle: '自定义名称和网址，做成你自己的起手板。',
     quickLinkEdit: '编辑入口',
@@ -62,9 +85,35 @@ const MESSAGES = {
     quickLinkNamePlaceholder: '例如 GitHub / 飞书 / 邮箱',
     quickLinkUrlLabel: '网址',
     quickLinkUrlPlaceholder: '例如 https://github.com',
-    backgroundImageUpload: '设置背景',
-    backgroundImageChange: '更换背景',
-    backgroundImageClear: '清除背景',
+    backgroundImageUpload: '上传图片',
+    backgroundImageChange: '更换图片',
+    backgroundImageClear: '恢复默认',
+    settingsTitle: '偏好设置',
+    settingsAppearance: '外观',
+    settingsLinks: '快捷入口',
+    settingsLanguageLabel: '界面语言',
+    settingsBackgroundLabel: '背景设置',
+    settingsBackgroundHint: '选一个纯色，或者上传你自己的图片。',
+    settingsSolidBackgroundLabel: '纯色背景',
+    settingsImageUploadLabel: '自定义图片',
+    settingsLinkOpenModeLabel: '点击快捷入口时',
+    settingsLinkOpenModeHint: '选择在当前页打开，或新开一个标签页打开。',
+    settingsOpenModeCurrent: '当前标签页',
+    settingsOpenModeCurrentDesc: '直接替换当前新标签页。',
+    settingsOpenModeNew: '新标签页',
+    settingsOpenModeNewDesc: '保留当前面板，另开页面。',
+    settingsSaved: '设置已保存',
+    toastThemeUpdated: '主题已切换',
+    openSettings: '打开设置',
+    closeSettings: '关闭设置',
+    themeLightMode: '浅色模式',
+    themeDarkMode: '深色模式',
+    themeSwitchToLight: '切换到浅色模式',
+    themeSwitchToDark: '切换到深色模式',
+    sessionToolLabel: '打开最近会话',
+    stashToolLabel: '打开快速收纳',
+    stashMenuTitle: '收纳',
+    stashMenuHint: '选择收纳范围',
     quickLinkCancel: '取消',
     quickLinkSave: '保存入口',
     quickLinkUpdate: '保存修改',
@@ -75,8 +124,30 @@ const MESSAGES = {
     toastQuickLinkDeleted: '快捷入口已删除',
     toastQuickLinkInvalidUrl: '请输入有效的网址',
     toastBackgroundUpdated: '背景已更新',
-    toastBackgroundCleared: '背景已清除',
+    toastBackgroundCleared: '已恢复默认背景',
     toastBackgroundFailed: '背景设置失败，请换一张图片试试',
+    sessionsTitle: '会话收纳',
+    sessionsEmpty: '把当前窗口或全部窗口收纳成会话，稍后可以像 OneTab 一样整组恢复。',
+    sessionFabLabel: '收纳',
+    sessionRecent: '最近会话',
+    sessionPanelClose: '关闭收纳面板',
+    stashCurrentWindow: '当前窗口',
+    stashAllWindows: '全部窗口',
+    sessionSourceCurrentWindow: '当前窗口',
+    sessionSourceAllWindows: '全部窗口',
+    sessionRestoreAll: '恢复全部',
+    sessionRestoreTab: '恢复',
+    sessionDelete: '删除会话',
+    sessionTabsCount: count => `${count} 个标签`,
+    sessionWindowsCount: count => `${count} 个窗口`,
+    sessionMoreTabs: count => `还有 ${count} 个标签`,
+    sessionDeleteConfirm: title => `要删除“${title}”这个会话吗？`,
+    toastSessionSaved: count => `已收纳 ${count} 个标签`,
+    toastSessionRestored: count => `已恢复 ${count} 个标签`,
+    toastSessionDeleted: '会话已删除',
+    toastSessionNothingToSave: '没有可收纳的标签',
+    toastSessionSaveFailed: '收纳会话失败',
+    toastSessionRestoreFailed: '恢复会话失败',
     savedForLater: '稍后保存',
     nothingSaved: '还没有保存内容。活在当下。',
     archive: '归档',
@@ -134,10 +205,10 @@ const MESSAGES = {
     closeExtras: 'Close extras',
     openTabs: 'Open tabs',
     quickLinksTitle: 'Quick links',
-    quickLinksSubtitle: 'Pin the sites you open every day so your new tab becomes a real launchpad.',
+    quickLinksSubtitle: '',
     quickLinksAddButton: 'Add link',
-    quickLinksEmptyTitle: 'Start with a few favorites',
-    quickLinksEmptySubtitle: 'Pin GitHub, email, docs, or your admin tools so they are always one click away.',
+    quickLinksEmptyTitle: 'Pin a few favorites to get started.',
+    quickLinksEmptySubtitle: '',
     quickLinkAddCardTitle: 'Add a shortcut',
     quickLinkAddCardSubtitle: 'Name it, paste the URL, and make this page your own.',
     quickLinkEdit: 'Edit link',
@@ -149,9 +220,35 @@ const MESSAGES = {
     quickLinkNamePlaceholder: 'For example GitHub / Slack / Mail',
     quickLinkUrlLabel: 'URL',
     quickLinkUrlPlaceholder: 'For example https://github.com',
-    backgroundImageUpload: 'Set background',
-    backgroundImageChange: 'Change background',
-    backgroundImageClear: 'Clear background',
+    backgroundImageUpload: 'Upload image',
+    backgroundImageChange: 'Change image',
+    backgroundImageClear: 'Reset default',
+    settingsTitle: 'Settings',
+    settingsAppearance: 'Appearance',
+    settingsLinks: 'Quick Links',
+    settingsLanguageLabel: 'Interface language',
+    settingsBackgroundLabel: 'Background',
+    settingsBackgroundHint: 'Pick a solid color, or upload your own image.',
+    settingsSolidBackgroundLabel: 'Solid colors',
+    settingsImageUploadLabel: 'Custom image',
+    settingsLinkOpenModeLabel: 'When clicking a quick link',
+    settingsLinkOpenModeHint: 'Open it here, or open it in a new tab.',
+    settingsOpenModeCurrent: 'Current tab',
+    settingsOpenModeCurrentDesc: 'Replace this new tab directly.',
+    settingsOpenModeNew: 'New tab',
+    settingsOpenModeNewDesc: 'Keep this dashboard and open another tab.',
+    settingsSaved: 'Settings saved',
+    toastThemeUpdated: 'Theme updated',
+    openSettings: 'Open settings',
+    closeSettings: 'Close settings',
+    themeLightMode: 'Light mode',
+    themeDarkMode: 'Dark mode',
+    themeSwitchToLight: 'Switch to light mode',
+    themeSwitchToDark: 'Switch to dark mode',
+    sessionToolLabel: 'Open recent sessions',
+    stashToolLabel: 'Open quick stash',
+    stashMenuTitle: 'Stash',
+    stashMenuHint: 'Choose a scope',
     quickLinkCancel: 'Cancel',
     quickLinkSave: 'Save link',
     quickLinkUpdate: 'Save changes',
@@ -162,8 +259,30 @@ const MESSAGES = {
     toastQuickLinkDeleted: 'Quick link deleted',
     toastQuickLinkInvalidUrl: 'Enter a valid URL',
     toastBackgroundUpdated: 'Background updated',
-    toastBackgroundCleared: 'Background cleared',
+    toastBackgroundCleared: 'Background reset',
     toastBackgroundFailed: 'Failed to update background',
+    sessionsTitle: 'Sessions',
+    sessionsEmpty: 'Stash the current window or all windows into a session, then restore the whole set later.',
+    sessionFabLabel: 'Stash',
+    sessionRecent: 'Recent sessions',
+    sessionPanelClose: 'Close stash panel',
+    stashCurrentWindow: 'Current window',
+    stashAllWindows: 'All windows',
+    sessionSourceCurrentWindow: 'Current window',
+    sessionSourceAllWindows: 'All windows',
+    sessionRestoreAll: 'Restore all',
+    sessionRestoreTab: 'Open',
+    sessionDelete: 'Delete session',
+    sessionTabsCount: count => `${count} tab${count !== 1 ? 's' : ''}`,
+    sessionWindowsCount: count => `${count} window${count !== 1 ? 's' : ''}`,
+    sessionMoreTabs: count => `${count} more tab${count !== 1 ? 's' : ''}`,
+    sessionDeleteConfirm: title => `Delete the session "${title}"?`,
+    toastSessionSaved: count => `Stashed ${count} tab${count !== 1 ? 's' : ''}`,
+    toastSessionRestored: count => `Restored ${count} tab${count !== 1 ? 's' : ''}`,
+    toastSessionDeleted: 'Session deleted',
+    toastSessionNothingToSave: 'No tabs to stash',
+    toastSessionSaveFailed: 'Failed to stash tabs',
+    toastSessionRestoreFailed: 'Failed to restore session',
     savedForLater: 'Saved for later',
     nothingSaved: 'Nothing saved. Living in the moment.',
     archive: 'Archive',
@@ -245,10 +364,10 @@ async function setLanguagePreference(language) {
 }
 
 function syncLanguageSwitcher() {
-  const switcher = document.getElementById('languageSwitcher');
+  const switcher = document.getElementById('settingsLanguageSwitcher');
   if (switcher) switcher.setAttribute('aria-label', t('languageSwitcherLabel'));
 
-  document.querySelectorAll('.language-option').forEach(button => {
+  document.querySelectorAll('.settings-language-option').forEach(button => {
     const { language } = button.dataset;
     const isActive = language === currentLanguage;
     button.textContent = MESSAGES[language]?.languageShort || language;
@@ -258,26 +377,282 @@ function syncLanguageSwitcher() {
   });
 }
 
+function getDefaultBackgroundColor() {
+  return currentTheme === 'dark' ? DEFAULT_DARK_BACKGROUND_COLOR : DEFAULT_BACKGROUND_COLOR;
+}
+
+function normalizeHexColor(color) {
+  const value = String(color || '').trim();
+  if (!/^#([\da-f]{3}|[\da-f]{6})$/i.test(value)) return '';
+  if (value.length === 7) return value.toLowerCase();
+  return `#${value.slice(1).split('').map(char => `${char}${char}`).join('').toLowerCase()}`;
+}
+
+function hexToRgb(color) {
+  const normalized = normalizeHexColor(color);
+  if (!normalized) return null;
+
+  return {
+    r: Number.parseInt(normalized.slice(1, 3), 16),
+    g: Number.parseInt(normalized.slice(3, 5), 16),
+    b: Number.parseInt(normalized.slice(5, 7), 16),
+  };
+}
+
+function rgbToHex({ r, g, b }) {
+  const toHex = value => Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function rgbToRgbaString(color, alpha = 1) {
+  const rgb = typeof color === 'string' ? hexToRgb(color) : color;
+  if (!rgb) return `rgba(0, 0, 0, ${alpha})`;
+  const nextAlpha = Math.max(0, Math.min(1, alpha));
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${nextAlpha})`;
+}
+
+function mixHexColors(baseColor, targetColor, weight = 0.5) {
+  const base = hexToRgb(baseColor);
+  const target = hexToRgb(targetColor);
+  if (!base || !target) return normalizeHexColor(baseColor) || baseColor;
+
+  const ratio = Math.max(0, Math.min(1, weight));
+  return rgbToHex({
+    r: base.r + (target.r - base.r) * ratio,
+    g: base.g + (target.g - base.g) * ratio,
+    b: base.b + (target.b - base.b) * ratio,
+  });
+}
+
+function getEffectiveBackgroundColor() {
+  if (!customBackgroundColor) return getDefaultBackgroundColor();
+
+  const normalized = normalizeHexColor(customBackgroundColor);
+  if (!normalized) return customBackgroundColor;
+
+  if (currentTheme === 'dark') {
+    // Preserve the chosen hue in dark mode, but pull it toward the dark theme base
+    // so the theme switch still meaningfully controls the overall atmosphere.
+    return mixHexColors(normalized, DEFAULT_DARK_BACKGROUND_COLOR, 0.78);
+  }
+
+  return normalized;
+}
+
+function updateSolidSurfacePalette() {
+  const effectiveBackground = getEffectiveBackgroundColor();
+  const normalizedBackground = normalizeHexColor(effectiveBackground);
+  if (!normalizedBackground) return;
+
+  const isDark = currentTheme === 'dark';
+  const surfaceColor = isDark
+    ? mixHexColors(normalizedBackground, '#151c24', 0.58)
+    : mixHexColors(normalizedBackground, '#ffffff', 0.86);
+  const elevatedColor = isDark
+    ? mixHexColors(normalizedBackground, '#1c2530', 0.7)
+    : mixHexColors(normalizedBackground, '#ffffff', 0.92);
+  const borderColor = isDark
+    ? mixHexColors(normalizedBackground, '#4d5b69', 0.34)
+    : mixHexColors(normalizedBackground, '#d7dee7', 0.62);
+  const subtleLineColor = isDark
+    ? mixHexColors(normalizedBackground, '#5b6978', 0.26)
+    : mixHexColors(normalizedBackground, '#cfd9e6', 0.52);
+  const shadowColor = isDark
+    ? 'rgba(0, 0, 0, 0.26)'
+    : rgbToRgbaString(mixHexColors(normalizedBackground, '#6f8fb2', 0.45), 0.12);
+
+  document.body.style.setProperty('--solid-surface-bg', surfaceColor);
+  document.body.style.setProperty('--solid-surface-elevated-bg', elevatedColor);
+  document.body.style.setProperty('--solid-surface-border', borderColor);
+  document.body.style.setProperty('--solid-surface-line', subtleLineColor);
+  document.body.style.setProperty('--solid-surface-shadow', shadowColor);
+}
+
+function syncThemeToggleControl() {
+  const themeTrigger = document.getElementById('themeToggleBtn');
+  const themeState = document.getElementById('themeToggleState');
+  if (!themeTrigger) return;
+
+  const isDark = currentTheme === 'dark';
+  const label = isDark ? t('themeSwitchToLight') : t('themeSwitchToDark');
+
+  themeTrigger.classList.toggle('is-dark', isDark);
+  themeTrigger.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+  themeTrigger.setAttribute('aria-label', label);
+  themeTrigger.title = label;
+
+  if (themeState) themeState.textContent = isDark ? t('themeDarkMode') : t('themeLightMode');
+}
+
+function applyThemePreference(theme) {
+  currentTheme = theme === 'dark' ? 'dark' : 'light';
+  document.body.classList.toggle('theme-dark', currentTheme === 'dark');
+  document.body.classList.toggle('theme-light', currentTheme !== 'dark');
+  applyBackgroundSelection({
+    imageDataUrl: customBackgroundImage,
+    colorValue: customBackgroundColor,
+  });
+  syncThemeToggleControl();
+}
+
+async function loadThemePreference() {
+  try {
+    const { [THEME_STORAGE_KEY]: storedTheme = 'light' } = await chrome.storage.local.get(THEME_STORAGE_KEY);
+    applyThemePreference(storedTheme);
+  } catch {
+    applyThemePreference('light');
+  }
+}
+
+async function setThemePreference(theme) {
+  const nextTheme = theme === 'dark' ? 'dark' : 'light';
+  await chrome.storage.local.set({ [THEME_STORAGE_KEY]: nextTheme });
+  applyThemePreference(nextTheme);
+}
+
 function syncBackgroundControls() {
   const triggerBtn = document.getElementById('backgroundImageTriggerBtn');
   const clearBtn = document.getElementById('backgroundImageClearBtn');
-  const dock = document.querySelector('.header-control-dock');
+  const solidBlock = document.getElementById('settingsSolidBackgroundBlock');
+  const imageBlock = document.getElementById('settingsImageUploadBlock');
+  const swatchGroup = document.getElementById('settingsColorSwatches');
   const triggerLabel = customBackgroundImage ? t('backgroundImageChange') : t('backgroundImageUpload');
 
   if (triggerBtn) {
+    triggerBtn.textContent = triggerLabel;
     triggerBtn.title = triggerLabel;
     triggerBtn.setAttribute('aria-label', triggerLabel);
     triggerBtn.classList.toggle('is-active', !!customBackgroundImage);
   }
 
   if (clearBtn) {
+    clearBtn.textContent = t('backgroundImageClear');
     clearBtn.title = t('backgroundImageClear');
     clearBtn.setAttribute('aria-label', t('backgroundImageClear'));
-    clearBtn.hidden = !customBackgroundImage;
+    clearBtn.hidden = !(customBackgroundImage || customBackgroundColor);
   }
 
-  if (dock) {
-    dock.classList.toggle('has-image', !!customBackgroundImage);
+  if (solidBlock) solidBlock.classList.toggle('is-active', !!customBackgroundColor && !customBackgroundImage);
+  if (imageBlock) imageBlock.classList.toggle('is-active', !!customBackgroundImage);
+  if (swatchGroup) swatchGroup.setAttribute('aria-label', t('settingsSolidBackgroundLabel'));
+
+  document.querySelectorAll('.settings-color-swatch').forEach(button => {
+    const color = button.dataset.backgroundColor || '';
+    const isActive = color === customBackgroundColor && !customBackgroundImage;
+    const colorName = currentLanguage === 'zh-CN'
+      ? button.dataset.colorNameZh || color
+      : button.dataset.colorNameEn || color;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    button.setAttribute('aria-label', colorName);
+    button.title = colorName;
+  });
+}
+
+function setStashMenuOpen(nextOpen) {
+  isStashMenuOpen = !!nextOpen;
+
+  const trigger = document.getElementById('stashMenuTrigger');
+  const menu = document.getElementById('stashMenu');
+
+  if (isStashMenuOpen) {
+    setSettingsModalOpen(false);
+    setSessionPanelOpen(false);
+  }
+
+  if (trigger) trigger.setAttribute('aria-expanded', isStashMenuOpen ? 'true' : 'false');
+  if (trigger) trigger.classList.toggle('is-active', isStashMenuOpen);
+  if (menu) menu.style.display = isStashMenuOpen ? 'block' : 'none';
+}
+
+function setSessionPanelOpen(nextOpen) {
+  isSessionPanelOpen = !!nextOpen;
+
+  const trigger = document.getElementById('sessionFabTrigger');
+  const panel = document.getElementById('sessionPanel');
+
+  if (isSessionPanelOpen) {
+    setSettingsModalOpen(false);
+    setStashMenuOpen(false);
+  }
+  if (trigger) trigger.setAttribute('aria-expanded', isSessionPanelOpen ? 'true' : 'false');
+  if (trigger) trigger.classList.toggle('is-active', isSessionPanelOpen);
+  if (panel) panel.style.display = isSessionPanelOpen ? 'block' : 'none';
+}
+
+function setCurrentSettingsPanel(panel) {
+  currentSettingsPanel = panel === 'links' ? 'links' : 'appearance';
+
+  document.querySelectorAll('.settings-nav-item').forEach(button => {
+    const isActive = button.dataset.settingsPanel === currentSettingsPanel;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+  });
+
+  document.querySelectorAll('.settings-panel').forEach(panelEl => {
+    panelEl.style.display = panelEl.dataset.settingsPanel === currentSettingsPanel ? 'flex' : 'none';
+  });
+}
+
+function setSettingsModalOpen(nextOpen) {
+  isSettingsModalOpen = !!nextOpen;
+
+  const backdrop = document.getElementById('settingsModalBackdrop');
+  const trigger = document.getElementById('settingsModalTrigger');
+  if (backdrop) backdrop.style.display = isSettingsModalOpen ? 'flex' : 'none';
+  if (trigger) {
+    trigger.classList.toggle('is-active', isSettingsModalOpen);
+    trigger.setAttribute('aria-expanded', isSettingsModalOpen ? 'true' : 'false');
+    trigger.setAttribute('aria-label', isSettingsModalOpen ? t('closeSettings') : t('openSettings'));
+    trigger.title = isSettingsModalOpen ? t('closeSettings') : t('openSettings');
+  }
+
+  if (isSettingsModalOpen) {
+    setStashMenuOpen(false);
+    setSessionPanelOpen(false);
+    setCurrentSettingsPanel(currentSettingsPanel);
+  }
+}
+
+async function loadQuickLinksOpenModePreference() {
+  try {
+    const { [QUICK_LINKS_OPEN_MODE_STORAGE_KEY]: storedMode = 'current-tab' } = await chrome.storage.local.get(QUICK_LINKS_OPEN_MODE_STORAGE_KEY);
+    quickLinksOpenMode = storedMode === 'new-tab' ? 'new-tab' : 'current-tab';
+  } catch {
+    quickLinksOpenMode = 'current-tab';
+  }
+}
+
+async function setQuickLinksOpenModePreference(mode) {
+  quickLinksOpenMode = mode === 'new-tab' ? 'new-tab' : 'current-tab';
+  await chrome.storage.local.set({ [QUICK_LINKS_OPEN_MODE_STORAGE_KEY]: quickLinksOpenMode });
+}
+
+function syncQuickLinkOpenModeControls() {
+  const configs = [
+    {
+      id: 'settingsOpenModeCurrentBtn',
+      mode: 'current-tab',
+      title: t('settingsOpenModeCurrent'),
+      description: t('settingsOpenModeCurrentDesc'),
+    },
+    {
+      id: 'settingsOpenModeNewBtn',
+      mode: 'new-tab',
+      title: t('settingsOpenModeNew'),
+      description: t('settingsOpenModeNewDesc'),
+    },
+  ];
+
+  for (const config of configs) {
+    const button = document.getElementById(config.id);
+    if (!button) continue;
+    const isActive = quickLinksOpenMode === config.mode;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    button.innerHTML = `
+      <span class="settings-choice-title">${escapeHtml(config.title)}</span>
+      <span class="settings-choice-meta">${escapeHtml(config.description)}</span>`;
   }
 }
 
@@ -286,7 +661,18 @@ function applyStaticText() {
 
   const quickLinksTitle = document.getElementById('quickLinksTitle');
   const quickLinksSubtitle = document.getElementById('quickLinksSubtitle');
-  const quickLinksAddBtn = document.getElementById('quickLinksAddBtn');
+  const stashTrigger = document.getElementById('stashMenuTrigger');
+  const sessionTrigger = document.getElementById('sessionFabTrigger');
+  const settingsTrigger = document.getElementById('settingsModalTrigger');
+  const themeTrigger = document.getElementById('themeToggleBtn');
+  const stashMenuTitle = document.getElementById('stashMenuTitle');
+  const stashMenuHint = document.getElementById('stashMenuHint');
+  const sessionsTitle = document.getElementById('sessionsSectionTitle');
+  const sessionsEmpty = document.getElementById('sessionsEmpty');
+  const sessionRecentLabel = document.getElementById('sessionRecentLabel');
+  const sessionPanelCloseBtn = document.querySelector('.session-panel-close');
+  const stashCurrentWindowBtn = document.getElementById('stashCurrentWindowBtn');
+  const stashAllWindowsBtn = document.getElementById('stashAllWindowsBtn');
   const deferredTitle = document.getElementById('deferredSectionTitle');
   const deferredEmpty = document.getElementById('deferredEmpty');
   const archiveLabel = document.getElementById('archiveToggleLabel');
@@ -303,10 +689,50 @@ function applyStaticText() {
   const quickLinkUrlInput = document.getElementById('quickLinkUrlInput');
   const quickLinkCancelBtn = document.getElementById('quickLinkCancelBtn');
   const quickLinkModalCloseBtn = document.getElementById('quickLinkModalCloseBtn');
+  const settingsTitle = document.getElementById('settingsModalTitle');
+  const settingsAppearanceTab = document.getElementById('settingsAppearanceTab');
+  const settingsLinksTab = document.getElementById('settingsLinksTab');
+  const settingsLanguageLabel = document.getElementById('settingsLanguageLabel');
+  const settingsBackgroundLabel = document.getElementById('settingsBackgroundLabel');
+  const settingsBackgroundHint = document.getElementById('settingsBackgroundHint');
+  const settingsSolidBackgroundLabel = document.getElementById('settingsSolidBackgroundLabel');
+  const settingsImageUploadLabel = document.getElementById('settingsImageUploadLabel');
+  const settingsLinkOpenModeLabel = document.getElementById('settingsLinkOpenModeLabel');
+  const settingsLinkOpenModeHint = document.getElementById('settingsLinkOpenModeHint');
+  const settingsCloseBtn = document.getElementById('settingsModalCloseBtn');
 
   if (quickLinksTitle) quickLinksTitle.textContent = t('quickLinksTitle');
   if (quickLinksSubtitle) quickLinksSubtitle.textContent = t('quickLinksSubtitle');
-  if (quickLinksAddBtn) quickLinksAddBtn.textContent = t('quickLinksAddButton');
+  if (stashTrigger) {
+    stashTrigger.title = t('stashToolLabel');
+    stashTrigger.setAttribute('aria-label', t('stashToolLabel'));
+  }
+  if (sessionTrigger) {
+    sessionTrigger.title = t('sessionToolLabel');
+    sessionTrigger.setAttribute('aria-label', t('sessionToolLabel'));
+  }
+  if (themeTrigger) {
+    syncThemeToggleControl();
+  }
+  if (stashMenuTitle) stashMenuTitle.textContent = t('stashMenuTitle');
+  if (stashMenuHint) stashMenuHint.textContent = t('stashMenuHint');
+  if (settingsTrigger) {
+    settingsTrigger.title = isSettingsModalOpen ? t('closeSettings') : t('openSettings');
+    settingsTrigger.setAttribute('aria-label', isSettingsModalOpen ? t('closeSettings') : t('openSettings'));
+  }
+  if (sessionsTitle) sessionsTitle.textContent = t('sessionsTitle');
+  if (sessionsEmpty) sessionsEmpty.textContent = t('sessionsEmpty');
+  if (sessionRecentLabel) sessionRecentLabel.textContent = t('sessionRecent');
+  if (sessionPanelCloseBtn) {
+    sessionPanelCloseBtn.title = t('sessionPanelClose');
+    sessionPanelCloseBtn.setAttribute('aria-label', t('sessionPanelClose'));
+  }
+  if (stashCurrentWindowBtn) {
+    stashCurrentWindowBtn.innerHTML = `<span class="stash-action-title">${escapeHtml(t('stashCurrentWindow'))}</span>`;
+  }
+  if (stashAllWindowsBtn) {
+    stashAllWindowsBtn.innerHTML = `<span class="stash-action-title">${escapeHtml(t('stashAllWindows'))}</span>`;
+  }
   if (deferredTitle) deferredTitle.textContent = t('savedForLater');
   if (deferredEmpty) deferredEmpty.textContent = t('nothingSaved');
   if (archiveLabel) archiveLabel.textContent = t('archive');
@@ -324,9 +750,26 @@ function applyStaticText() {
   if (quickLinkCancelBtn) quickLinkCancelBtn.textContent = t('quickLinkCancel');
   if (quickLinkModalCloseBtn) quickLinkModalCloseBtn.textContent = '×';
   if (quickLinkModalCloseBtn) quickLinkModalCloseBtn.title = t('quickLinkModalClose');
+  if (settingsTitle) settingsTitle.textContent = t('settingsTitle');
+  if (settingsAppearanceTab) settingsAppearanceTab.textContent = t('settingsAppearance');
+  if (settingsLinksTab) settingsLinksTab.textContent = t('settingsLinks');
+  if (settingsLanguageLabel) settingsLanguageLabel.textContent = t('settingsLanguageLabel');
+  if (settingsBackgroundLabel) settingsBackgroundLabel.textContent = t('settingsBackgroundLabel');
+  if (settingsBackgroundHint) settingsBackgroundHint.textContent = t('settingsBackgroundHint');
+  if (settingsSolidBackgroundLabel) settingsSolidBackgroundLabel.textContent = t('settingsSolidBackgroundLabel');
+  if (settingsImageUploadLabel) settingsImageUploadLabel.textContent = t('settingsImageUploadLabel');
+  if (settingsLinkOpenModeLabel) settingsLinkOpenModeLabel.textContent = t('settingsLinkOpenModeLabel');
+  if (settingsLinkOpenModeHint) settingsLinkOpenModeHint.textContent = t('settingsLinkOpenModeHint');
+  if (settingsCloseBtn) {
+    settingsCloseBtn.textContent = '×';
+    settingsCloseBtn.title = t('closeSettings');
+    settingsCloseBtn.setAttribute('aria-label', t('closeSettings'));
+  }
 
   syncLanguageSwitcher();
   syncBackgroundControls();
+  syncQuickLinkOpenModeControls();
+  setCurrentSettingsPanel(currentSettingsPanel);
   syncQuickLinkModalText();
 }
 
@@ -379,33 +822,55 @@ function normalizeQuickLink(link, index = 0) {
   };
 }
 
-function applyCustomBackground(imageDataUrl = '') {
+function applyBackgroundSelection({ imageDataUrl = '', colorValue = '' } = {}) {
   customBackgroundImage = typeof imageDataUrl === 'string' ? imageDataUrl : '';
+  customBackgroundColor = typeof colorValue === 'string' ? colorValue : '';
+  updateSolidSurfacePalette();
   document.body.style.setProperty(
     '--custom-background-image',
     customBackgroundImage ? `url("${customBackgroundImage}")` : 'none'
   );
+  document.body.style.setProperty(
+    '--custom-background-color',
+    getEffectiveBackgroundColor()
+  );
   document.body.classList.toggle('has-custom-background', !!customBackgroundImage);
+  document.body.classList.toggle('has-solid-background', !!customBackgroundColor && !customBackgroundImage);
   syncBackgroundControls();
 }
 
 async function loadBackgroundPreference() {
   try {
-    const { [BACKGROUND_IMAGE_STORAGE_KEY]: storedBackground = '' } = await chrome.storage.local.get(BACKGROUND_IMAGE_STORAGE_KEY);
-    applyCustomBackground(typeof storedBackground === 'string' ? storedBackground : '');
+    const {
+      [BACKGROUND_IMAGE_STORAGE_KEY]: storedBackground = '',
+      [BACKGROUND_COLOR_STORAGE_KEY]: storedColor = '',
+    } = await chrome.storage.local.get([BACKGROUND_IMAGE_STORAGE_KEY, BACKGROUND_COLOR_STORAGE_KEY]);
+
+    applyBackgroundSelection({
+      imageDataUrl: typeof storedBackground === 'string' ? storedBackground : '',
+      colorValue: typeof storedColor === 'string' ? storedColor : '',
+    });
   } catch {
-    applyCustomBackground('');
+    applyBackgroundSelection();
   }
 }
 
 async function saveBackgroundPreference(imageDataUrl) {
   await chrome.storage.local.set({ [BACKGROUND_IMAGE_STORAGE_KEY]: imageDataUrl });
-  applyCustomBackground(imageDataUrl);
+  await chrome.storage.local.remove(BACKGROUND_COLOR_STORAGE_KEY);
+  applyBackgroundSelection({ imageDataUrl, colorValue: '' });
+}
+
+async function saveBackgroundColorPreference(colorValue) {
+  const nextColor = BACKGROUND_COLOR_PRESETS.includes(colorValue) ? colorValue : '';
+  await chrome.storage.local.set({ [BACKGROUND_COLOR_STORAGE_KEY]: nextColor });
+  await chrome.storage.local.remove(BACKGROUND_IMAGE_STORAGE_KEY);
+  applyBackgroundSelection({ imageDataUrl: '', colorValue: nextColor });
 }
 
 async function clearBackgroundPreference() {
-  await chrome.storage.local.remove(BACKGROUND_IMAGE_STORAGE_KEY);
-  applyCustomBackground('');
+  await chrome.storage.local.remove([BACKGROUND_IMAGE_STORAGE_KEY, BACKGROUND_COLOR_STORAGE_KEY]);
+  applyBackgroundSelection();
 }
 
 function loadImageFromUrl(source) {
@@ -472,7 +937,7 @@ async function prepareBackgroundImage(file) {
       const context = canvas.getContext('2d');
       if (!context) throw new Error('canvas-unavailable');
 
-      context.fillStyle = '#f8f5f0';
+      context.fillStyle = getEffectiveBackgroundColor();
       context.fillRect(0, 0, width, height);
       context.drawImage(image, 0, 0, width, height);
 
@@ -547,10 +1012,11 @@ function renderQuickLinkAddCard() {
 }
 
 function renderQuickLinkEmptyCard() {
+  const subtitle = t('quickLinksEmptySubtitle');
   return `
     <div class="quick-link-empty-card">
       <div class="quick-link-empty-title">${t('quickLinksEmptyTitle')}</div>
-      <div class="quick-link-empty-subtitle">${t('quickLinksEmptySubtitle')}</div>
+      ${subtitle ? `<div class="quick-link-empty-subtitle">${subtitle}</div>` : ''}
     </div>`;
 }
 
@@ -609,6 +1075,11 @@ function openQuickLinkModal(linkId = '') {
 
 async function openQuickLink(url) {
   const targetUrl = normalizeQuickLinkUrl(url);
+  if (quickLinksOpenMode === 'new-tab') {
+    await chrome.tabs.create({ url: targetUrl });
+    return;
+  }
+
   const currentTab = await chrome.tabs.getCurrent();
 
   if (currentTab?.id) {
@@ -880,6 +1351,152 @@ async function dismissSavedTab(id) {
     tab.dismissed = true;
     await chrome.storage.local.set({ deferred });
   }
+}
+
+function isRealWebTab(tab) {
+  const url = tab?.url || '';
+  return (
+    !url.startsWith('chrome://') &&
+    !url.startsWith('chrome-extension://') &&
+    !url.startsWith('about:') &&
+    !url.startsWith('edge://') &&
+    !url.startsWith('brave://')
+  );
+}
+
+function normalizeSessionTab(tab, index = 0) {
+  return {
+    url: String(tab.url || '').trim(),
+    title: String(tab.title || tab.url || '').trim(),
+    windowId: Number.isFinite(tab.windowId) ? tab.windowId : 0,
+    favIconUrl: String(tab.favIconUrl || '').trim(),
+    order: Number.isFinite(tab.order) ? tab.order : index,
+  };
+}
+
+function normalizeTabSession(session, index = 0) {
+  const tabs = Array.isArray(session.tabs)
+    ? session.tabs.map((tab, tabIndex) => normalizeSessionTab(tab, tabIndex)).filter(tab => tab.url)
+    : [];
+
+  return {
+    id: session.id || `session-${Date.now()}-${index}`,
+    createdAt: session.createdAt || new Date().toISOString(),
+    sourceType: session.sourceType === 'all-windows' ? 'all-windows' : 'current-window',
+    tabs,
+  };
+}
+
+function sortTabSessions(list) {
+  return [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+async function getTabSessions() {
+  const { [TAB_SESSIONS_STORAGE_KEY]: stored = [] } = await chrome.storage.local.get(TAB_SESSIONS_STORAGE_KEY);
+  return sortTabSessions(stored.map((session, index) => normalizeTabSession(session, index)).filter(session => session.tabs.length > 0));
+}
+
+async function saveTabSessions(list) {
+  const sessions = sortTabSessions(list.map((session, index) => normalizeTabSession(session, index)).filter(session => session.tabs.length > 0));
+  await chrome.storage.local.set({ [TAB_SESSIONS_STORAGE_KEY]: sessions });
+  return sessions;
+}
+
+function getSessionWindowCount(session) {
+  return new Set((session.tabs || []).map(tab => tab.windowId).filter(Boolean)).size || 1;
+}
+
+function getSessionTopDomains(session, limit = 3) {
+  const counts = new Map();
+
+  for (const tab of session.tabs || []) {
+    try {
+      const domain = friendlyDomain(new URL(tab.url).hostname);
+      counts.set(domain, (counts.get(domain) || 0) + 1);
+    } catch {
+      // Ignore malformed URLs.
+    }
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([domain]) => domain);
+}
+
+function getSessionTitle(session) {
+  const sourceLabel = session.sourceType === 'all-windows' ? t('sessionSourceAllWindows') : t('sessionSourceCurrentWindow');
+  const topDomains = getSessionTopDomains(session, 2);
+  return topDomains.length > 0 ? `${sourceLabel} · ${topDomains.join(' / ')}` : sourceLabel;
+}
+
+async function queryRealTabsSnapshot() {
+  const tabs = await chrome.tabs.query({});
+  return tabs.filter(isRealWebTab).map((tab, index) => ({
+    id: tab.id,
+    url: tab.url,
+    title: tab.title,
+    windowId: tab.windowId,
+    favIconUrl: tab.favIconUrl,
+    active: tab.active,
+    pinned: tab.pinned,
+    order: index,
+  }));
+}
+
+async function stashTabsAsSession(tabs, sourceType) {
+  if (!tabs || tabs.length === 0) return null;
+
+  const sessions = await getTabSessions();
+  const nextSession = normalizeTabSession({
+    id: `session-${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    sourceType,
+    tabs,
+  }, sessions.length);
+
+  await saveTabSessions([nextSession, ...sessions]);
+
+  const tabIds = tabs.map(tab => tab.id).filter(Number.isFinite);
+  if (tabIds.length > 0) {
+    await chrome.tabs.remove(tabIds);
+  }
+
+  await fetchOpenTabs();
+  return nextSession;
+}
+
+async function restoreSession(sessionId) {
+  const sessions = await getTabSessions();
+  const session = sessions.find(item => item.id === sessionId);
+  if (!session) throw new Error('session-not-found');
+
+  const currentWindow = await chrome.windows.getCurrent();
+  for (const tab of session.tabs) {
+    await chrome.tabs.create({ windowId: currentWindow.id, url: tab.url, active: false });
+  }
+
+  await saveTabSessions(sessions.filter(item => item.id !== sessionId));
+  await fetchOpenTabs();
+  return session;
+}
+
+async function restoreSessionTab(sessionId, url) {
+  const sessions = await getTabSessions();
+  const session = sessions.find(item => item.id === sessionId);
+  const tab = session?.tabs.find(item => item.url === url);
+  if (!tab) throw new Error('session-tab-not-found');
+
+  const currentWindow = await chrome.windows.getCurrent();
+  await chrome.tabs.create({ windowId: currentWindow.id, url: tab.url, active: true });
+  await fetchOpenTabs();
+  return tab;
+}
+
+async function deleteSession(sessionId) {
+  const sessions = await getTabSessions();
+  const nextSessions = sessions.filter(item => item.id !== sessionId);
+  await saveTabSessions(nextSessions);
 }
 
 
@@ -1320,16 +1937,7 @@ let domainGroups = [];
  * pages, about:blank, etc.
  */
 function getRealTabs() {
-  return openTabs.filter(t => {
-    const url = t.url || '';
-    return (
-      !url.startsWith('chrome://') &&
-      !url.startsWith('chrome-extension://') &&
-      !url.startsWith('about:') &&
-      !url.startsWith('edge://') &&
-      !url.startsWith('brave://')
-    );
-  });
+  return openTabs.filter(isRealWebTab);
 }
 
 /**
@@ -1501,6 +2109,96 @@ function renderDomainCard(group) {
 
 
 /* ----------------------------------------------------------------
+   TAB SESSIONS — Render Session Column
+   ---------------------------------------------------------------- */
+
+function renderSessionCard(session) {
+  const sessionTitle = escapeHtml(getSessionTitle(session));
+  const meta = `${t('sessionTabsCount', session.tabs.length)} · ${t('sessionWindowsCount', getSessionWindowCount(session))} · ${timeAgo(session.createdAt)}`;
+  const domainSummary = escapeHtml(getSessionTopDomains(session, 3).join(' · '));
+  const previewTabs = session.tabs.slice(0, 4).map(tab => {
+    const faviconUrl = escapeHtml(tab.favIconUrl || `https://www.google.com/s2/favicons?domain=${summarizeUrl(tab.url).split('/')[0]}&sz=32`);
+    const safeTitle = escapeHtml(tab.title || tab.url);
+    const safeUrl = escapeHtml(tab.url);
+
+    return `
+      <div class="session-preview-row">
+        <img class="session-preview-favicon" src="${faviconUrl}" alt="" data-hide-on-error="true">
+        <div class="session-preview-title">${safeTitle}</div>
+        <button type="button" class="session-preview-open" data-action="restore-session-tab" data-session-id="${escapeHtml(session.id)}" data-session-tab-url="${safeUrl}">${t('sessionRestoreTab')}</button>
+      </div>`;
+  }).join('');
+
+  const moreCount = Math.max(0, session.tabs.length - 4);
+
+  return `
+    <article class="session-card" data-session-id="${escapeHtml(session.id)}">
+      <div class="session-card-header">
+        <div>
+          <div class="session-card-title">${sessionTitle}</div>
+          <div class="session-card-meta">${meta}</div>
+        </div>
+      </div>
+      ${domainSummary ? `<div class="session-card-domain-summary">${domainSummary}</div>` : ''}
+      <div class="session-preview-list">
+        ${previewTabs}
+      </div>
+      ${moreCount > 0 ? `<div class="session-preview-more">${t('sessionMoreTabs', moreCount)}</div>` : ''}
+      <div class="session-card-actions">
+        <button type="button" class="action-btn save-tabs" data-action="restore-session" data-session-id="${escapeHtml(session.id)}">${t('sessionRestoreAll')}</button>
+        <button type="button" class="action-btn danger" data-action="delete-session" data-session-id="${escapeHtml(session.id)}">${t('sessionDelete')}</button>
+      </div>
+    </article>`;
+}
+
+async function renderSessionsFloatingPanel() {
+  const tools = document.getElementById('floatingTools');
+  const rail = document.getElementById('floatingToolsRail');
+  const stashTrigger = document.getElementById('stashMenuTrigger');
+  const countEl = document.getElementById('sessionsCount');
+  const badgeEl = document.getElementById('sessionFabCount');
+  const listEl = document.getElementById('sessionsList');
+  const trigger = document.getElementById('sessionFabTrigger');
+  if (!tools || !rail || !stashTrigger || !countEl || !badgeEl || !listEl || !trigger) return;
+
+  try {
+    const sessions = await getTabSessions();
+    const canStash = lastRealTabCount > 0;
+    const hasSessions = sessions.length > 0;
+
+    tools.style.display = 'flex';
+    stashTrigger.hidden = !canStash;
+    trigger.hidden = !hasSessions;
+    rail.hidden = !canStash && !hasSessions;
+
+    if (!canStash) {
+      setStashMenuOpen(false);
+    }
+
+    if (!hasSessions) {
+      setSessionPanelOpen(false);
+      countEl.textContent = '';
+      badgeEl.hidden = true;
+      trigger.classList.toggle('has-sessions', false);
+      listEl.innerHTML = '';
+    } else {
+      countEl.textContent = t('itemsCount', sessions.length);
+      badgeEl.textContent = String(sessions.length);
+      badgeEl.hidden = false;
+      trigger.classList.toggle('has-sessions', true);
+      listEl.innerHTML = sessions.map(session => renderSessionCard(session)).join('');
+    }
+  } catch (err) {
+    console.warn('[tab-out] Could not load tab sessions:', err);
+    rail.hidden = true;
+    stashTrigger.hidden = true;
+    trigger.hidden = true;
+    setStashMenuOpen(false);
+    setSessionPanelOpen(false);
+  }
+}
+
+/* ----------------------------------------------------------------
    SAVED FOR LATER — Render Checklist Column
    ---------------------------------------------------------------- */
 
@@ -1513,6 +2211,7 @@ function renderDomainCard(group) {
  */
 async function renderDeferredColumn() {
   const column         = document.getElementById('deferredColumn');
+  const deferredSection = document.getElementById('deferredSection');
   const list           = document.getElementById('deferredList');
   const empty          = document.getElementById('deferredEmpty');
   const countEl        = document.getElementById('deferredCount');
@@ -1525,13 +2224,16 @@ async function renderDeferredColumn() {
   try {
     const { active, archived } = await getSavedTabs();
 
-    // Hide the entire column if there's nothing to show
-    if (active.length === 0 && archived.length === 0) {
+    const hasDeferredUI = active.length > 0 || archived.length > 0;
+
+    if (!hasDeferredUI) {
       column.style.display = 'none';
       return;
     }
 
     column.style.display = 'block';
+
+    if (deferredSection) deferredSection.style.display = hasDeferredUI ? 'block' : 'none';
 
     // Render active checklist items
     if (active.length > 0) {
@@ -1635,6 +2337,7 @@ async function renderStaticDashboard() {
   // --- Fetch tabs ---
   await fetchOpenTabs();
   const realTabs = getRealTabs();
+  lastRealTabCount = realTabs.length;
 
   // --- Group tabs by domain ---
   // Landing pages (Gmail inbox, Twitter home, etc.) get their own special group
@@ -1770,6 +2473,9 @@ async function renderStaticDashboard() {
   // --- Check for duplicate Tab Out tabs ---
   checkTabOutDupes();
 
+  // --- Render floating sessions tool ---
+  await renderSessionsFloatingPanel();
+
   // --- Render "Saved for Later" column ---
   await renderDeferredColumn();
 }
@@ -1802,6 +2508,40 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
+  if (action === 'open-settings-modal') {
+    setSettingsModalOpen(true);
+    return;
+  }
+
+  if (action === 'close-settings-modal') {
+    setSettingsModalOpen(false);
+    return;
+  }
+
+  if (action === 'show-settings-panel') {
+    setCurrentSettingsPanel(actionEl.dataset.settingsPanel || 'appearance');
+    return;
+  }
+
+  if (action === 'toggle-color-theme') {
+    try {
+      await setThemePreference(currentTheme === 'dark' ? 'light' : 'dark');
+      showToast(t('toastThemeUpdated'));
+    } catch (err) {
+      console.warn('[tab-out] Could not update theme:', err);
+    }
+    return;
+  }
+
+  if (action === 'set-quick-link-open-mode') {
+    const mode = actionEl.dataset.openMode;
+    if (!mode || mode === quickLinksOpenMode) return;
+    await setQuickLinksOpenModePreference(mode);
+    syncQuickLinkOpenModeControls();
+    showToast(t('settingsSaved'));
+    return;
+  }
+
   if (action === 'choose-background-image') {
     const input = document.getElementById('backgroundImageInput');
     if (!(input instanceof HTMLInputElement)) return;
@@ -1818,6 +2558,118 @@ document.addEventListener('click', async (e) => {
       console.warn('[tab-out] Could not clear background:', err);
       showToast(t('toastBackgroundFailed'));
     }
+    return;
+  }
+
+  if (action === 'set-background-color') {
+    const colorValue = actionEl.dataset.backgroundColor || '';
+    if (!BACKGROUND_COLOR_PRESETS.includes(colorValue)) return;
+
+    try {
+      await saveBackgroundColorPreference(colorValue);
+      showToast(t('toastBackgroundUpdated'));
+    } catch (err) {
+      console.warn('[tab-out] Could not update background color:', err);
+      showToast(t('toastBackgroundFailed'));
+    }
+    return;
+  }
+
+  if (action === 'toggle-stash-menu') {
+    const trigger = document.getElementById('stashMenuTrigger');
+    if (!trigger || trigger.hidden) return;
+    setStashMenuOpen(!isStashMenuOpen);
+    return;
+  }
+
+  if (action === 'toggle-session-panel') {
+    const trigger = document.getElementById('sessionFabTrigger');
+    if (!trigger || trigger.hidden) return;
+    setSessionPanelOpen(!isSessionPanelOpen);
+    return;
+  }
+
+  if (action === 'stash-current-window') {
+    try {
+      const currentWindow = await chrome.windows.getCurrent();
+      const tabs = (await queryRealTabsSnapshot()).filter(tab => tab.windowId === currentWindow.id);
+      if (tabs.length === 0) {
+        showToast(t('toastSessionNothingToSave'));
+        return;
+      }
+
+      await stashTabsAsSession(tabs, 'current-window');
+      setStashMenuOpen(false);
+      await renderDashboard();
+      showToast(t('toastSessionSaved', tabs.length));
+    } catch (err) {
+      console.warn('[tab-out] Could not stash current window:', err);
+      showToast(t('toastSessionSaveFailed'));
+    }
+    return;
+  }
+
+  if (action === 'stash-all-windows') {
+    try {
+      const tabs = await queryRealTabsSnapshot();
+      if (tabs.length === 0) {
+        showToast(t('toastSessionNothingToSave'));
+        return;
+      }
+
+      await stashTabsAsSession(tabs, 'all-windows');
+      setStashMenuOpen(false);
+      await renderDashboard();
+      showToast(t('toastSessionSaved', tabs.length));
+    } catch (err) {
+      console.warn('[tab-out] Could not stash all windows:', err);
+      showToast(t('toastSessionSaveFailed'));
+    }
+    return;
+  }
+
+  if (action === 'restore-session') {
+    const sessionId = actionEl.dataset.sessionId;
+    if (!sessionId) return;
+
+    try {
+      const session = await restoreSession(sessionId);
+      await renderDashboard();
+      showToast(t('toastSessionRestored', session.tabs.length));
+    } catch (err) {
+      console.warn('[tab-out] Could not restore session:', err);
+      showToast(t('toastSessionRestoreFailed'));
+    }
+    return;
+  }
+
+  if (action === 'restore-session-tab') {
+    const sessionId = actionEl.dataset.sessionId;
+    const url = actionEl.dataset.sessionTabUrl;
+    if (!sessionId || !url) return;
+
+    try {
+      await restoreSessionTab(sessionId, url);
+      await renderDashboard();
+    } catch (err) {
+      console.warn('[tab-out] Could not restore session tab:', err);
+      showToast(t('toastSessionRestoreFailed'));
+    }
+    return;
+  }
+
+  if (action === 'delete-session') {
+    const sessionId = actionEl.dataset.sessionId;
+    if (!sessionId) return;
+
+    const sessions = await getTabSessions();
+    const session = sessions.find(item => item.id === sessionId);
+    if (!session) return;
+    if (!window.confirm(t('sessionDeleteConfirm', getSessionTitle(session)))) return;
+
+    await deleteSession(sessionId);
+    await renderDashboard();
+    showToast(t('toastSessionDeleted'));
     return;
   }
 
@@ -2055,6 +2907,7 @@ document.addEventListener('click', async (e) => {
 
     const statTabs = document.getElementById('statTabs');
     if (statTabs) statTabs.textContent = openTabs.length;
+
     return;
   }
 
@@ -2163,6 +3016,19 @@ document.getElementById('quickLinkModalBackdrop')?.addEventListener('click', (e)
   if (e.target.id === 'quickLinkModalBackdrop') closeQuickLinkModal();
 });
 
+document.getElementById('settingsModalBackdrop')?.addEventListener('click', (e) => {
+  if (e.target.id === 'settingsModalBackdrop') setSettingsModalOpen(false);
+});
+
+document.addEventListener('click', (e) => {
+  if (!isSessionPanelOpen && !isStashMenuOpen) return;
+  const tools = document.getElementById('floatingTools');
+  if (!tools) return;
+  if (tools.contains(e.target)) return;
+  if (isStashMenuOpen) setStashMenuOpen(false);
+  setSessionPanelOpen(false);
+});
+
 document.getElementById('backgroundImageInput')?.addEventListener('change', async (e) => {
   const input = e.target;
   if (!(input instanceof HTMLInputElement)) return;
@@ -2199,6 +3065,9 @@ document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   const backdrop = document.getElementById('quickLinkModalBackdrop');
   if (backdrop?.style.display === 'flex') closeQuickLinkModal();
+  if (isSettingsModalOpen) setSettingsModalOpen(false);
+  if (isStashMenuOpen) setStashMenuOpen(false);
+  if (isSessionPanelOpen) setSessionPanelOpen(false);
 });
 
 // ---- Archive toggle — expand/collapse the archive section ----
@@ -2249,7 +3118,9 @@ document.addEventListener('input', async (e) => {
    ---------------------------------------------------------------- */
 async function initializeApp() {
   await loadLanguagePreference();
+  await loadThemePreference();
   await loadBackgroundPreference();
+  await loadQuickLinksOpenModePreference();
   await renderDashboard();
 }
 

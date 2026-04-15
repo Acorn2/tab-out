@@ -26,28 +26,6 @@
       <!-- "Friday, April 4, 2026" — written by getDateDisplay() in app.js -->
       <div class="date" id="dateDisplay"></div>
     </div>
-    <div class="header-right">
-      <div class="header-control-dock">
-        <div class="background-controls" id="backgroundControls">
-          <input type="file" id="backgroundImageInput" class="sr-only" accept="image/*">
-          <button type="button" class="header-icon-btn" data-action="choose-background-image" id="backgroundImageTriggerBtn" aria-label="">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75 7.5 10.5a1.5 1.5 0 0 1 2.121 0l2.629 2.629m0 0 1.5-1.5a1.5 1.5 0 0 1 2.121 0l4.879 4.878m-8.5-3.378 4.5 4.5m-10.5-10.5h.008v.008H6.25V6.25Z" />
-            </svg>
-          </button>
-          <button type="button" class="header-icon-btn header-icon-btn-subtle" data-action="clear-background-image" id="backgroundImageClearBtn" aria-label="" hidden>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m6 18 12-12M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div class="header-control-divider" aria-hidden="true"></div>
-        <div class="language-switcher" id="languageSwitcher" role="group">
-          <button type="button" class="language-option" data-action="set-language" data-language="zh-CN">中</button>
-          <button type="button" class="language-option" data-action="set-language" data-language="en-US">EN</button>
-        </div>
-      </div>
-    </div>
   </header>
 
   <section class="quick-links-section" id="quickLinksSection">
@@ -57,7 +35,6 @@
           <h2 id="quickLinksTitle"></h2>
           <p class="quick-links-subtitle" id="quickLinksSubtitle"></p>
         </div>
-        <button type="button" class="action-btn quick-links-add-btn" data-action="open-quick-link-modal" id="quickLinksAddBtn"></button>
       </div>
       <div class="quick-links-grid" id="quickLinksGrid"></div>
     </div>
@@ -99,30 +76,32 @@
 
     <!-- RIGHT COLUMN: Saved for Later checklist -->
     <div class="deferred-column" id="deferredColumn" style="display:none">
-      <div class="section-header">
-        <h2 id="deferredSectionTitle"></h2>
-        <div class="section-line"></div>
-        <div class="section-count" id="deferredCount"></div>
-      </div>
-
-      <!-- Active checklist items — injected by renderDeferredList() in app.js -->
-      <div class="deferred-list" id="deferredList"></div>
-
-      <!-- Empty state — shown when no active deferred tabs -->
-      <div class="deferred-empty" id="deferredEmpty" style="display:none"></div>
-
-      <!-- Archive section — collapsed by default -->
-      <div class="deferred-archive" id="deferredArchive" style="display:none">
-        <button class="archive-toggle" id="archiveToggle">
-          <svg class="archive-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
-          <span id="archiveToggleLabel"></span>
-          <span class="archive-count" id="archiveCount"></span>
-        </button>
-        <div class="archive-body" id="archiveBody" style="display:none">
-          <input type="text" class="archive-search" id="archiveSearch">
-          <div class="archive-list" id="archiveList"></div>
+      <section class="sidebar-section deferred-section-shell" id="deferredSection" style="display:none">
+        <div class="section-header">
+          <h2 id="deferredSectionTitle"></h2>
+          <div class="section-line"></div>
+          <div class="section-count" id="deferredCount"></div>
         </div>
-      </div>
+
+        <!-- Active checklist items — injected by renderDeferredList() in app.js -->
+        <div class="deferred-list" id="deferredList"></div>
+
+        <!-- Empty state — shown when no active deferred tabs -->
+        <div class="deferred-empty" id="deferredEmpty" style="display:none"></div>
+
+        <!-- Archive section — collapsed by default -->
+        <div class="deferred-archive" id="deferredArchive" style="display:none">
+          <button class="archive-toggle" id="archiveToggle">
+            <svg class="archive-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+            <span id="archiveToggleLabel"></span>
+            <span class="archive-count" id="archiveCount"></span>
+          </button>
+          <div class="archive-body" id="archiveBody" style="display:none">
+            <input type="text" class="archive-search" id="archiveSearch">
+            <div class="archive-list" id="archiveList"></div>
+          </div>
+        </div>
+      </section>
     </div>
 
   </div><!-- end .dashboard-columns -->
@@ -148,6 +127,159 @@
   </footer>
 
 </div><!-- end .container -->
+
+<input type="file" id="backgroundImageInput" class="sr-only" accept="image/*">
+
+<div class="floating-tools" id="floatingTools">
+  <div class="floating-tool-popovers">
+    <div class="stash-menu" id="stashMenu" style="display:none">
+      <div class="stash-menu-header">
+        <div>
+          <div class="stash-menu-title" id="stashMenuTitle"></div>
+          <p class="stash-menu-hint" id="stashMenuHint"></p>
+        </div>
+        <button type="button" class="stash-menu-close" data-action="toggle-stash-menu" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m6 18 12-12M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="stash-menu-actions">
+        <button type="button" class="stash-action-card" data-action="stash-current-window" id="stashCurrentWindowBtn"></button>
+        <button type="button" class="stash-action-card" data-action="stash-all-windows" id="stashAllWindowsBtn"></button>
+      </div>
+    </div>
+
+    <div class="session-panel" id="sessionPanel" style="display:none">
+      <div class="session-panel-header">
+        <div class="session-panel-heading">
+          <div class="session-panel-eyebrow" id="sessionRecentLabel"></div>
+          <h3 id="sessionsSectionTitle"></h3>
+        </div>
+        <button type="button" class="session-panel-close" data-action="toggle-session-panel" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m6 18 12-12M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="session-panel-meta-row">
+        <p class="session-panel-subtitle" id="sessionsEmpty"></p>
+        <span class="section-count" id="sessionsCount"></span>
+      </div>
+      <div class="sessions-list" id="sessionsList"></div>
+    </div>
+  </div>
+
+  <div class="floating-tools-dock">
+    <button type="button" class="floating-tool-btn floating-tool-btn-theme" data-action="toggle-color-theme" id="themeToggleBtn" aria-pressed="false">
+      <span class="floating-tool-icon floating-tool-theme-icon floating-tool-theme-icon-sun" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.85" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25M12 18.75V21M4.954 4.954 6.546 6.546M17.454 17.454l1.592 1.592M3 12h2.25M18.75 12H21M4.954 19.046l1.592-1.592M17.454 6.546l1.592-1.592M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+        </svg>
+      </span>
+      <span class="floating-tool-icon floating-tool-theme-icon floating-tool-theme-icon-moon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.85" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79Z" />
+        </svg>
+      </span>
+      <span class="sr-only" id="themeToggleState"></span>
+    </button>
+
+    <div class="floating-tools-rail" id="floatingToolsRail">
+      <button type="button" class="floating-tool-btn floating-tool-btn-stash" data-action="toggle-stash-menu" id="stashMenuTrigger" aria-expanded="false" aria-controls="stashMenu">
+        <span class="floating-tool-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.85" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 8.25h15" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 9.75v6.75A1.5 1.5 0 0 0 6.75 18h10.5a1.5 1.5 0 0 0 1.5-1.5V9.75" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5 12 7.5l3-3" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5v5.25" />
+          </svg>
+        </span>
+      </button>
+      <button type="button" class="floating-tool-btn floating-tool-btn-session" data-action="toggle-session-panel" id="sessionFabTrigger" aria-expanded="false" aria-controls="sessionPanel">
+        <span class="floating-tool-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.85" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75h15" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 15v1.5A1.5 1.5 0 0 0 6.75 18h10.5a1.5 1.5 0 0 0 1.5-1.5V15" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 11.25 12 8.25l3 3" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25V3.75" />
+          </svg>
+        </span>
+        <span class="floating-tool-badge" id="sessionFabCount" hidden></span>
+      </button>
+    </div>
+
+    <button type="button" class="floating-tool-btn floating-tool-btn-settings" data-action="open-settings-modal" id="settingsModalTrigger">
+      <span class="floating-tool-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.412 4.587a1.75 1.75 0 0 1 3.176 0l.287.687a1.75 1.75 0 0 0 1.487 1.063l.742.056a1.75 1.75 0 0 1 1.588 2.75l-.45.593a1.75 1.75 0 0 0 0 2.115l.45.593a1.75 1.75 0 0 1-1.588 2.75l-.742.056a1.75 1.75 0 0 0-1.487 1.063l-.287.687a1.75 1.75 0 0 1-3.176 0l-.287-.687a1.75 1.75 0 0 0-1.487-1.063l-.742-.056a1.75 1.75 0 0 1-1.588-2.75l.45-.593a1.75 1.75 0 0 0 0-2.115l-.45-.593a1.75 1.75 0 0 1 1.588-2.75l.742-.056a1.75 1.75 0 0 0 1.487-1.063l.287-.687Z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 14.75a2.75 2.75 0 1 0 0-5.5 2.75 2.75 0 0 0 0 5.5Z" />
+        </svg>
+      </span>
+    </button>
+  </div>
+</div>
+
+<div class="settings-modal-backdrop" id="settingsModalBackdrop" style="display:none">
+  <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+    <div class="settings-modal-header">
+      <h3 id="settingsModalTitle"></h3>
+      <button type="button" class="settings-modal-close" data-action="close-settings-modal" id="settingsModalCloseBtn"></button>
+    </div>
+    <div class="settings-modal-body">
+      <aside class="settings-nav" id="settingsNav">
+        <button type="button" class="settings-nav-item" data-action="show-settings-panel" data-settings-panel="appearance" id="settingsAppearanceTab"></button>
+        <button type="button" class="settings-nav-item" data-action="show-settings-panel" data-settings-panel="links" id="settingsLinksTab"></button>
+      </aside>
+      <div class="settings-content">
+        <section class="settings-panel" data-settings-panel="appearance">
+          <div class="settings-group">
+            <div class="settings-group-label" id="settingsLanguageLabel"></div>
+            <div class="settings-language-switcher" id="settingsLanguageSwitcher" role="group">
+              <button type="button" class="settings-language-option" data-action="set-language" data-language="zh-CN">中</button>
+              <button type="button" class="settings-language-option" data-action="set-language" data-language="en-US">EN</button>
+            </div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-group-label" id="settingsBackgroundLabel"></div>
+            <p class="settings-group-copy" id="settingsBackgroundHint"></p>
+            <div class="settings-background-grid">
+              <div class="settings-background-block" id="settingsSolidBackgroundBlock">
+                <div class="settings-background-subtitle" id="settingsSolidBackgroundLabel"></div>
+                <div class="settings-color-swatches" id="settingsColorSwatches" role="group">
+                  <button type="button" class="settings-color-swatch" data-action="set-background-color" data-background-color="#eef2f9" data-color-name-zh="雾蓝" data-color-name-en="Mist blue"></button>
+                  <button type="button" class="settings-color-swatch" data-action="set-background-color" data-background-color="#dff1ff" data-color-name-zh="晴空" data-color-name-en="Sky"></button>
+                  <button type="button" class="settings-color-swatch" data-action="set-background-color" data-background-color="#f4e3f7" data-color-name-zh="淡紫" data-color-name-en="Lavender"></button>
+                  <button type="button" class="settings-color-swatch" data-action="set-background-color" data-background-color="#e7f6d8" data-color-name-zh="青草" data-color-name-en="Mint"></button>
+                  <button type="button" class="settings-color-swatch" data-action="set-background-color" data-background-color="#fff3b8" data-color-name-zh="奶油" data-color-name-en="Butter"></button>
+                  <button type="button" class="settings-color-swatch" data-action="set-background-color" data-background-color="#eadff2" data-color-name-zh="丁香雾" data-color-name-en="Lilac mist"></button>
+                  <button type="button" class="settings-color-swatch" data-action="set-background-color" data-background-color="#f6ebdf" data-color-name-zh="细沙" data-color-name-en="Sand"></button>
+                </div>
+              </div>
+              <div class="settings-background-block" id="settingsImageUploadBlock">
+                <div class="settings-background-subtitle" id="settingsImageUploadLabel"></div>
+                <div class="settings-action-row settings-background-actions">
+                  <button type="button" class="action-btn save-tabs settings-upload-trigger" data-action="choose-background-image" id="backgroundImageTriggerBtn"></button>
+                  <button type="button" class="action-btn danger settings-reset-trigger" data-action="clear-background-image" id="backgroundImageClearBtn" hidden></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="settings-panel" data-settings-panel="links" style="display:none">
+          <div class="settings-group">
+            <div class="settings-group-label" id="settingsLinkOpenModeLabel"></div>
+            <p class="settings-group-copy" id="settingsLinkOpenModeHint"></p>
+            <div class="settings-choice-list" id="settingsLinkOpenModeChoices">
+              <button type="button" class="settings-choice" data-action="set-quick-link-open-mode" data-open-mode="current-tab" id="settingsOpenModeCurrentBtn"></button>
+              <button type="button" class="settings-choice" data-action="set-quick-link-open-mode" data-open-mode="new-tab" id="settingsOpenModeNewBtn"></button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ================================================================
      TOAST — floats above everything, used for action confirmations
