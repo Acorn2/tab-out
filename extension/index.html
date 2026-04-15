@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -26,7 +26,42 @@
       <!-- "Friday, April 4, 2026" — written by getDateDisplay() in app.js -->
       <div class="date" id="dateDisplay"></div>
     </div>
+    <div class="header-right">
+      <div class="header-control-dock">
+        <div class="background-controls" id="backgroundControls">
+          <input type="file" id="backgroundImageInput" class="sr-only" accept="image/*">
+          <button type="button" class="header-icon-btn" data-action="choose-background-image" id="backgroundImageTriggerBtn" aria-label="">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75 7.5 10.5a1.5 1.5 0 0 1 2.121 0l2.629 2.629m0 0 1.5-1.5a1.5 1.5 0 0 1 2.121 0l4.879 4.878m-8.5-3.378 4.5 4.5m-10.5-10.5h.008v.008H6.25V6.25Z" />
+            </svg>
+          </button>
+          <button type="button" class="header-icon-btn header-icon-btn-subtle" data-action="clear-background-image" id="backgroundImageClearBtn" aria-label="" hidden>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m6 18 12-12M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="header-control-divider" aria-hidden="true"></div>
+        <div class="language-switcher" id="languageSwitcher" role="group">
+          <button type="button" class="language-option" data-action="set-language" data-language="zh-CN">中</button>
+          <button type="button" class="language-option" data-action="set-language" data-language="en-US">EN</button>
+        </div>
+      </div>
+    </div>
   </header>
+
+  <section class="quick-links-section" id="quickLinksSection">
+    <div class="quick-links-shell">
+      <div class="quick-links-header">
+        <div class="quick-links-heading">
+          <h2 id="quickLinksTitle"></h2>
+          <p class="quick-links-subtitle" id="quickLinksSubtitle"></p>
+        </div>
+        <button type="button" class="action-btn quick-links-add-btn" data-action="open-quick-link-modal" id="quickLinksAddBtn"></button>
+      </div>
+      <div class="quick-links-grid" id="quickLinksGrid"></div>
+    </div>
+  </section>
 
   <!-- ================================================================
        TAB OUT DUPES BANNER — appears when you have extra Tab Out tabs open
@@ -39,11 +74,9 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
         </svg>
       </div>
-      <div class="tab-cleanup-text">
-        You have <strong id="tabOutDupeCount"></strong> Tab Out tabs open. Keep just this one?
-      </div>
+      <div class="tab-cleanup-text" id="tabOutDupeText"></div>
     </div>
-    <button class="tab-cleanup-btn" data-action="close-tabout-dupes">Close extras</button>
+    <button class="tab-cleanup-btn" data-action="close-tabout-dupes" id="closeTabOutDupesBtn"></button>
   </div>
 
   <!-- ================================================================
@@ -57,7 +90,7 @@
     <!-- LEFT COLUMN: Open tabs -->
     <div class="active-section" id="openTabsSection" style="display:none">
       <div class="section-header">
-        <h2 id="openTabsSectionTitle">Right now</h2>
+        <h2 id="openTabsSectionTitle"></h2>
         <div class="section-line"></div>
         <div class="section-count" id="openTabsSectionCount"></div>
       </div>
@@ -67,7 +100,7 @@
     <!-- RIGHT COLUMN: Saved for Later checklist -->
     <div class="deferred-column" id="deferredColumn" style="display:none">
       <div class="section-header">
-        <h2>Saved for later</h2>
+        <h2 id="deferredSectionTitle"></h2>
         <div class="section-line"></div>
         <div class="section-count" id="deferredCount"></div>
       </div>
@@ -76,19 +109,17 @@
       <div class="deferred-list" id="deferredList"></div>
 
       <!-- Empty state — shown when no active deferred tabs -->
-      <div class="deferred-empty" id="deferredEmpty" style="display:none">
-        Nothing saved. Living in the moment.
-      </div>
+      <div class="deferred-empty" id="deferredEmpty" style="display:none"></div>
 
       <!-- Archive section — collapsed by default -->
       <div class="deferred-archive" id="deferredArchive" style="display:none">
         <button class="archive-toggle" id="archiveToggle">
           <svg class="archive-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
-          Archive
+          <span id="archiveToggleLabel"></span>
           <span class="archive-count" id="archiveCount"></span>
         </button>
         <div class="archive-body" id="archiveBody" style="display:none">
-          <input type="text" class="archive-search" id="archiveSearch" placeholder="Search archived tabs...">
+          <input type="text" class="archive-search" id="archiveSearch">
           <div class="archive-list" id="archiveList"></div>
         </div>
       </div>
@@ -103,11 +134,16 @@
     <div class="footer-stats">
       <div class="stat">
         <div class="stat-num" id="statTabs">—</div>
-        <div class="stat-label">Open tabs</div>
+        <div class="stat-label" id="statTabsLabel"></div>
       </div>
     </div>
-    <div class="last-refresh">
-      <span style="color: var(--muted); font-size: 11px;"><a href="https://github.com/zarazhangrui/tab-out" target="_top" style="color: var(--muted); text-decoration: underline; text-underline-offset: 2px;">Tab Out</a> by <a href="https://x.com/zarazhangrui" target="_top" style="color: var(--muted); text-decoration: underline; text-underline-offset: 2px;">Zara</a></span>
+    <div class="footer-credit-card">
+      <div class="footer-credit-eyebrow" id="footerCreditEyebrow"></div>
+      <div class="footer-credit-main" id="footerCreditMain"></div>
+      <div class="footer-credit-links">
+        <a id="footerProjectLink" href="https://github.com/zarazhangrui/tab-out" target="_top" rel="noopener noreferrer"></a>
+        <a id="footerAuthorLink" href="https://github.com/zarazhangrui" target="_top" rel="noopener noreferrer"></a>
+      </div>
     </div>
   </footer>
 
@@ -125,11 +161,31 @@
   <span id="toastText"></span>
 </div>
 
-<!-- Personal config (gitignored) — defines LOCAL_LANDING_PAGE_PATTERNS etc. -->
-<!-- If the file doesn't exist, that's fine — app.js uses sensible defaults. -->
-<script src="config.local.js" onerror="/* no personal config, that's fine */"></script>
+<div class="quick-link-modal-backdrop" id="quickLinkModalBackdrop" style="display:none">
+  <div class="quick-link-modal" role="dialog" aria-modal="true" aria-labelledby="quickLinkModalTitle">
+    <div class="quick-link-modal-header">
+      <h3 id="quickLinkModalTitle"></h3>
+      <button type="button" class="quick-link-modal-close" data-action="close-quick-link-modal" id="quickLinkModalCloseBtn"></button>
+    </div>
+    <form class="quick-link-form" id="quickLinkForm">
+      <input type="hidden" id="quickLinkId">
+      <label class="quick-link-field">
+        <span id="quickLinkNameLabel"></span>
+        <input type="text" id="quickLinkNameInput" maxlength="40" required>
+      </label>
+      <label class="quick-link-field">
+        <span id="quickLinkUrlLabel"></span>
+        <input type="text" id="quickLinkUrlInput" inputmode="url" required>
+      </label>
+      <div class="quick-link-form-actions">
+        <button type="button" class="action-btn" data-action="close-quick-link-modal" id="quickLinkCancelBtn"></button>
+        <button type="submit" class="action-btn primary" id="quickLinkSubmitBtn"></button>
+      </div>
+    </form>
+  </div>
+</div>
 
-<!-- Main dashboard logic — loads last so the DOM is ready -->
-<script src="app.js"></script>
+<!-- Boot loader: tries config.local.js first, then loads app.js -->
+<script src="boot.js"></script>
 </body>
 </html>

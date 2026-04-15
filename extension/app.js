@@ -25,6 +25,605 @@
 
 // All open tabs — populated by fetchOpenTabs()
 let openTabs = [];
+let quickLinks = [];
+let currentLanguage = 'zh-CN';
+let customBackgroundImage = '';
+
+const LANGUAGE_STORAGE_KEY = 'uiLanguage';
+const QUICK_LINKS_STORAGE_KEY = 'quickLinks';
+const BACKGROUND_IMAGE_STORAGE_KEY = 'customBackgroundImage';
+const MAX_BACKGROUND_EDGE = 2200;
+const MAX_BACKGROUND_STORAGE_LENGTH = 3_500_000;
+
+const MESSAGES = {
+  'zh-CN': {
+    languageName: '中文',
+    languageShort: '中',
+    languageSwitcherLabel: '切换语言',
+    greetingMorning: '早上好',
+    greetingAfternoon: '下午好',
+    greetingEvening: '晚上好',
+    tabOutDupeBanner: count => `你打开了 <strong>${count}</strong> 个 Tab Out 标签页。只保留当前这个吗？`,
+    closeExtras: '关闭多余标签',
+    openTabs: '打开中的标签',
+    quickLinksTitle: '常用入口',
+    quickLinksSubtitle: '把每天都会打开的网站放在这里，从新标签页一步直达。',
+    quickLinksAddButton: '添加入口',
+    quickLinksEmptyTitle: '先固定几个常用网站吧',
+    quickLinksEmptySubtitle: '把飞书、GitHub、邮箱或项目后台放进来，打开新标签页就能直接进入。',
+    quickLinkAddCardTitle: '新增快捷入口',
+    quickLinkAddCardSubtitle: '自定义名称和网址，做成你自己的起手板。',
+    quickLinkEdit: '编辑入口',
+    quickLinkDelete: '删除入口',
+    quickLinkModalAddTitle: '新增常用入口',
+    quickLinkModalEditTitle: '编辑常用入口',
+    quickLinkModalClose: '关闭弹窗',
+    quickLinkNameLabel: '名称',
+    quickLinkNamePlaceholder: '例如 GitHub / 飞书 / 邮箱',
+    quickLinkUrlLabel: '网址',
+    quickLinkUrlPlaceholder: '例如 https://github.com',
+    backgroundImageUpload: '设置背景',
+    backgroundImageChange: '更换背景',
+    backgroundImageClear: '清除背景',
+    quickLinkCancel: '取消',
+    quickLinkSave: '保存入口',
+    quickLinkUpdate: '保存修改',
+    quickLinkDeleteConfirm: title => `要删除“${title}”这个快捷入口吗？`,
+    toastQuickLinkInvalidName: '请输入入口名称',
+    toastQuickLinkAdded: '快捷入口已添加',
+    toastQuickLinkUpdated: '快捷入口已更新',
+    toastQuickLinkDeleted: '快捷入口已删除',
+    toastQuickLinkInvalidUrl: '请输入有效的网址',
+    toastBackgroundUpdated: '背景已更新',
+    toastBackgroundCleared: '背景已清除',
+    toastBackgroundFailed: '背景设置失败，请换一张图片试试',
+    savedForLater: '稍后保存',
+    nothingSaved: '还没有保存内容。活在当下。',
+    archive: '归档',
+    archiveSearchPlaceholder: '搜索已归档的标签...',
+    statOpenTabs: '打开标签',
+    footerCreditEyebrow: '原作者',
+    footerCreditMain: 'Tab Out 由 Zara Zhang 创作并开源',
+    footerProjectLink: '原项目',
+    footerAuthorLink: 'GitHub',
+    inboxZeroTitle: '标签清零了。',
+    inboxZeroSubtitle: '现在轻松多了。',
+    domainsCount: count => `${count} 个域名`,
+    itemsCount: count => `${count} 项`,
+    tabsOpenBadge: count => `${count} 个标签`,
+    duplicateBadge: count => `${count} 个重复`,
+    closeAllTabsAction: count => `关闭全部 ${count} 个标签`,
+    closeDuplicatesAction: count => `关闭 ${count} 个重复项`,
+    homepages: '主页',
+    tabsLabel: '标签',
+    moreTabs: count => `还有 ${count} 个`,
+    justNow: '刚刚',
+    minutesAgo: count => `${count} 分钟前`,
+    hoursAgo: count => `${count} 小时前`,
+    yesterday: '昨天',
+    daysAgo: count => `${count} 天前`,
+    saveForLaterTitle: '稍后保存',
+    closeThisTabTitle: '关闭此标签',
+    dismissTitle: '移除',
+    noResults: '没有结果',
+    toastClosedExtraTabOutTabs: '已关闭多余的 Tab Out 标签页',
+    toastTabClosed: '标签已关闭',
+    toastSaveFailed: '保存失败',
+    toastSavedForLater: '已保存到稍后处理',
+    toastClosedGroupTabs: (count, groupLabel) => `已从 ${groupLabel} 关闭 ${count} 个标签`,
+    toastClosedDuplicates: '已关闭重复标签，并保留一份',
+    toastClosedAllTabs: '所有标签已关闭，重新开始吧。',
+    postByUser: username => `@${username} 的帖子`,
+    githubIssue: (owner, repo, number) => `${owner}/${repo} Issue #${number}`,
+    githubPr: (owner, repo, number) => `${owner}/${repo} PR #${number}`,
+    githubPath: (owner, repo, path) => `${owner}/${repo} - ${path}`,
+    youtubeVideo: 'YouTube 视频',
+    redditPost: subreddit => `r/${subreddit} 帖子`,
+    substackBy: name => `${capitalize(name)} 的 Substack`,
+    githubPages: name => `${capitalize(name)}（GitHub Pages）`,
+    localFiles: '本地文件',
+  },
+  'en-US': {
+    languageName: 'English',
+    languageShort: 'EN',
+    languageSwitcherLabel: 'Switch language',
+    greetingMorning: 'Good morning',
+    greetingAfternoon: 'Good afternoon',
+    greetingEvening: 'Good evening',
+    tabOutDupeBanner: count => `You have <strong>${count}</strong> Tab Out tabs open. Keep just this one?`,
+    closeExtras: 'Close extras',
+    openTabs: 'Open tabs',
+    quickLinksTitle: 'Quick links',
+    quickLinksSubtitle: 'Pin the sites you open every day so your new tab becomes a real launchpad.',
+    quickLinksAddButton: 'Add link',
+    quickLinksEmptyTitle: 'Start with a few favorites',
+    quickLinksEmptySubtitle: 'Pin GitHub, email, docs, or your admin tools so they are always one click away.',
+    quickLinkAddCardTitle: 'Add a shortcut',
+    quickLinkAddCardSubtitle: 'Name it, paste the URL, and make this page your own.',
+    quickLinkEdit: 'Edit link',
+    quickLinkDelete: 'Delete link',
+    quickLinkModalAddTitle: 'Add quick link',
+    quickLinkModalEditTitle: 'Edit quick link',
+    quickLinkModalClose: 'Close dialog',
+    quickLinkNameLabel: 'Name',
+    quickLinkNamePlaceholder: 'For example GitHub / Slack / Mail',
+    quickLinkUrlLabel: 'URL',
+    quickLinkUrlPlaceholder: 'For example https://github.com',
+    backgroundImageUpload: 'Set background',
+    backgroundImageChange: 'Change background',
+    backgroundImageClear: 'Clear background',
+    quickLinkCancel: 'Cancel',
+    quickLinkSave: 'Save link',
+    quickLinkUpdate: 'Save changes',
+    quickLinkDeleteConfirm: title => `Delete the quick link "${title}"?`,
+    toastQuickLinkInvalidName: 'Enter a name for the link',
+    toastQuickLinkAdded: 'Quick link added',
+    toastQuickLinkUpdated: 'Quick link updated',
+    toastQuickLinkDeleted: 'Quick link deleted',
+    toastQuickLinkInvalidUrl: 'Enter a valid URL',
+    toastBackgroundUpdated: 'Background updated',
+    toastBackgroundCleared: 'Background cleared',
+    toastBackgroundFailed: 'Failed to update background',
+    savedForLater: 'Saved for later',
+    nothingSaved: 'Nothing saved. Living in the moment.',
+    archive: 'Archive',
+    archiveSearchPlaceholder: 'Search archived tabs...',
+    statOpenTabs: 'Open tabs',
+    footerCreditEyebrow: 'Original Creator',
+    footerCreditMain: 'Tab Out was created and open-sourced by Zara Zhang',
+    footerProjectLink: 'Original project',
+    footerAuthorLink: 'GitHub',
+    inboxZeroTitle: 'Inbox zero, but for tabs.',
+    inboxZeroSubtitle: "You're free.",
+    domainsCount: count => `${count} domain${count !== 1 ? 's' : ''}`,
+    itemsCount: count => `${count} item${count !== 1 ? 's' : ''}`,
+    tabsOpenBadge: count => `${count} tab${count !== 1 ? 's' : ''} open`,
+    duplicateBadge: count => `${count} duplicate${count !== 1 ? 's' : ''}`,
+    closeAllTabsAction: count => `Close all ${count} tab${count !== 1 ? 's' : ''}`,
+    closeDuplicatesAction: count => `Close ${count} duplicate${count !== 1 ? 's' : ''}`,
+    homepages: 'Homepages',
+    tabsLabel: 'tabs',
+    moreTabs: count => `+${count} more`,
+    justNow: 'just now',
+    minutesAgo: count => `${count} min ago`,
+    hoursAgo: count => `${count} hr${count !== 1 ? 's' : ''} ago`,
+    yesterday: 'yesterday',
+    daysAgo: count => `${count} days ago`,
+    saveForLaterTitle: 'Save for later',
+    closeThisTabTitle: 'Close this tab',
+    dismissTitle: 'Dismiss',
+    noResults: 'No results',
+    toastClosedExtraTabOutTabs: 'Closed extra Tab Out tabs',
+    toastTabClosed: 'Tab closed',
+    toastSaveFailed: 'Failed to save tab',
+    toastSavedForLater: 'Saved for later',
+    toastClosedGroupTabs: (count, groupLabel) => `Closed ${count} tab${count !== 1 ? 's' : ''} from ${groupLabel}`,
+    toastClosedDuplicates: 'Closed duplicates, kept one copy each',
+    toastClosedAllTabs: 'All tabs closed. Fresh start.',
+    postByUser: username => `Post by @${username}`,
+    githubIssue: (owner, repo, number) => `${owner}/${repo} Issue #${number}`,
+    githubPr: (owner, repo, number) => `${owner}/${repo} PR #${number}`,
+    githubPath: (owner, repo, path) => `${owner}/${repo} - ${path}`,
+    youtubeVideo: 'YouTube Video',
+    redditPost: subreddit => `r/${subreddit} post`,
+    substackBy: name => `${capitalize(name)}'s Substack`,
+    githubPages: name => `${capitalize(name)} (GitHub Pages)`,
+    localFiles: 'Local Files',
+  },
+};
+
+function getMessages() {
+  return MESSAGES[currentLanguage] || MESSAGES['en-US'];
+}
+
+function t(key, ...args) {
+  const localized = getMessages()[key];
+  if (typeof localized === 'function') return localized(...args);
+  if (localized !== undefined) return localized;
+
+  const fallback = MESSAGES['en-US'][key];
+  return typeof fallback === 'function' ? fallback(...args) : fallback || '';
+}
+
+async function loadLanguagePreference() {
+  try {
+    const { [LANGUAGE_STORAGE_KEY]: storedLanguage } = await chrome.storage.local.get(LANGUAGE_STORAGE_KEY);
+    if (storedLanguage && MESSAGES[storedLanguage]) currentLanguage = storedLanguage;
+  } catch {
+    currentLanguage = 'zh-CN';
+  }
+}
+
+async function setLanguagePreference(language) {
+  if (!MESSAGES[language] || language === currentLanguage) return;
+  currentLanguage = language;
+  try {
+    await chrome.storage.local.set({ [LANGUAGE_STORAGE_KEY]: language });
+  } catch {
+    // Ignore storage failures and keep the in-memory language.
+  }
+}
+
+function syncLanguageSwitcher() {
+  const switcher = document.getElementById('languageSwitcher');
+  if (switcher) switcher.setAttribute('aria-label', t('languageSwitcherLabel'));
+
+  document.querySelectorAll('.language-option').forEach(button => {
+    const { language } = button.dataset;
+    const isActive = language === currentLanguage;
+    button.textContent = MESSAGES[language]?.languageShort || language;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    button.title = MESSAGES[language]?.languageName || language;
+  });
+}
+
+function syncBackgroundControls() {
+  const triggerBtn = document.getElementById('backgroundImageTriggerBtn');
+  const clearBtn = document.getElementById('backgroundImageClearBtn');
+  const dock = document.querySelector('.header-control-dock');
+  const triggerLabel = customBackgroundImage ? t('backgroundImageChange') : t('backgroundImageUpload');
+
+  if (triggerBtn) {
+    triggerBtn.title = triggerLabel;
+    triggerBtn.setAttribute('aria-label', triggerLabel);
+    triggerBtn.classList.toggle('is-active', !!customBackgroundImage);
+  }
+
+  if (clearBtn) {
+    clearBtn.title = t('backgroundImageClear');
+    clearBtn.setAttribute('aria-label', t('backgroundImageClear'));
+    clearBtn.hidden = !customBackgroundImage;
+  }
+
+  if (dock) {
+    dock.classList.toggle('has-image', !!customBackgroundImage);
+  }
+}
+
+function applyStaticText() {
+  document.documentElement.lang = currentLanguage;
+
+  const quickLinksTitle = document.getElementById('quickLinksTitle');
+  const quickLinksSubtitle = document.getElementById('quickLinksSubtitle');
+  const quickLinksAddBtn = document.getElementById('quickLinksAddBtn');
+  const deferredTitle = document.getElementById('deferredSectionTitle');
+  const deferredEmpty = document.getElementById('deferredEmpty');
+  const archiveLabel = document.getElementById('archiveToggleLabel');
+  const archiveSearch = document.getElementById('archiveSearch');
+  const statTabsLabel = document.getElementById('statTabsLabel');
+  const footerCreditEyebrow = document.getElementById('footerCreditEyebrow');
+  const footerCreditMain = document.getElementById('footerCreditMain');
+  const footerProjectLink = document.getElementById('footerProjectLink');
+  const footerAuthorLink = document.getElementById('footerAuthorLink');
+  const closeTabOutDupesBtn = document.getElementById('closeTabOutDupesBtn');
+  const quickLinkNameLabel = document.getElementById('quickLinkNameLabel');
+  const quickLinkNameInput = document.getElementById('quickLinkNameInput');
+  const quickLinkUrlLabel = document.getElementById('quickLinkUrlLabel');
+  const quickLinkUrlInput = document.getElementById('quickLinkUrlInput');
+  const quickLinkCancelBtn = document.getElementById('quickLinkCancelBtn');
+  const quickLinkModalCloseBtn = document.getElementById('quickLinkModalCloseBtn');
+
+  if (quickLinksTitle) quickLinksTitle.textContent = t('quickLinksTitle');
+  if (quickLinksSubtitle) quickLinksSubtitle.textContent = t('quickLinksSubtitle');
+  if (quickLinksAddBtn) quickLinksAddBtn.textContent = t('quickLinksAddButton');
+  if (deferredTitle) deferredTitle.textContent = t('savedForLater');
+  if (deferredEmpty) deferredEmpty.textContent = t('nothingSaved');
+  if (archiveLabel) archiveLabel.textContent = t('archive');
+  if (archiveSearch) archiveSearch.placeholder = t('archiveSearchPlaceholder');
+  if (statTabsLabel) statTabsLabel.textContent = t('statOpenTabs');
+  if (footerCreditEyebrow) footerCreditEyebrow.textContent = t('footerCreditEyebrow');
+  if (footerCreditMain) footerCreditMain.textContent = t('footerCreditMain');
+  if (footerProjectLink) footerProjectLink.textContent = t('footerProjectLink');
+  if (footerAuthorLink) footerAuthorLink.textContent = t('footerAuthorLink');
+  if (closeTabOutDupesBtn) closeTabOutDupesBtn.textContent = t('closeExtras');
+  if (quickLinkNameLabel) quickLinkNameLabel.textContent = t('quickLinkNameLabel');
+  if (quickLinkNameInput) quickLinkNameInput.placeholder = t('quickLinkNamePlaceholder');
+  if (quickLinkUrlLabel) quickLinkUrlLabel.textContent = t('quickLinkUrlLabel');
+  if (quickLinkUrlInput) quickLinkUrlInput.placeholder = t('quickLinkUrlPlaceholder');
+  if (quickLinkCancelBtn) quickLinkCancelBtn.textContent = t('quickLinkCancel');
+  if (quickLinkModalCloseBtn) quickLinkModalCloseBtn.textContent = '×';
+  if (quickLinkModalCloseBtn) quickLinkModalCloseBtn.title = t('quickLinkModalClose');
+
+  syncLanguageSwitcher();
+  syncBackgroundControls();
+  syncQuickLinkModalText();
+}
+
+function updateTabOutDupeBannerText(count) {
+  const textEl = document.getElementById('tabOutDupeText');
+  if (textEl) textEl.innerHTML = t('tabOutDupeBanner', count);
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function summarizeUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.hostname.replace(/^www\./, '')}${parsed.pathname === '/' ? '' : parsed.pathname}`;
+  } catch {
+    return url || '';
+  }
+}
+
+function getQuickLinkMonogram(title, url) {
+  const source = (title || summarizeUrl(url)).replace(/^https?:\/\//, '').trim();
+  const parts = source.split(/[\s./_-]+/).filter(Boolean);
+  return parts.slice(0, 2).map(part => part.charAt(0).toUpperCase()).join('') || '+';
+}
+
+function normalizeQuickLinkUrl(rawUrl) {
+  let normalized = String(rawUrl || '').trim();
+  if (!normalized) throw new Error('invalid-url');
+  if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(normalized)) normalized = `https://${normalized}`;
+
+  const parsed = new URL(normalized);
+  if (!/^https?:$/.test(parsed.protocol)) throw new Error('invalid-url');
+  return parsed.toString();
+}
+
+function normalizeQuickLink(link, index = 0) {
+  return {
+    id: link.id || `quick-link-${Date.now()}-${index}`,
+    title: String(link.title || '').trim(),
+    url: String(link.url || '').trim(),
+    createdAt: link.createdAt || new Date().toISOString(),
+    order: Number.isFinite(link.order) ? link.order : index,
+  };
+}
+
+function applyCustomBackground(imageDataUrl = '') {
+  customBackgroundImage = typeof imageDataUrl === 'string' ? imageDataUrl : '';
+  document.body.style.setProperty(
+    '--custom-background-image',
+    customBackgroundImage ? `url("${customBackgroundImage}")` : 'none'
+  );
+  document.body.classList.toggle('has-custom-background', !!customBackgroundImage);
+  syncBackgroundControls();
+}
+
+async function loadBackgroundPreference() {
+  try {
+    const { [BACKGROUND_IMAGE_STORAGE_KEY]: storedBackground = '' } = await chrome.storage.local.get(BACKGROUND_IMAGE_STORAGE_KEY);
+    applyCustomBackground(typeof storedBackground === 'string' ? storedBackground : '');
+  } catch {
+    applyCustomBackground('');
+  }
+}
+
+async function saveBackgroundPreference(imageDataUrl) {
+  await chrome.storage.local.set({ [BACKGROUND_IMAGE_STORAGE_KEY]: imageDataUrl });
+  applyCustomBackground(imageDataUrl);
+}
+
+async function clearBackgroundPreference() {
+  await chrome.storage.local.remove(BACKGROUND_IMAGE_STORAGE_KEY);
+  applyCustomBackground('');
+}
+
+function loadImageFromUrl(source) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('image-load-failed'));
+    image.src = source;
+  });
+}
+
+function getScaledDimensions(width, height, maxEdge) {
+  const largestEdge = Math.max(width, height);
+  if (largestEdge <= maxEdge) {
+    return { width, height };
+  }
+
+  const ratio = maxEdge / largestEdge;
+  return {
+    width: Math.max(1, Math.round(width * ratio)),
+    height: Math.max(1, Math.round(height * ratio)),
+  };
+}
+
+function exportBackgroundCanvas(canvas) {
+  const attempts = [
+    ['image/webp', 0.82],
+    ['image/webp', 0.72],
+    ['image/jpeg', 0.8],
+    ['image/jpeg', 0.7],
+  ];
+
+  let fallback = '';
+  for (const [type, quality] of attempts) {
+    const dataUrl = canvas.toDataURL(type, quality);
+    fallback = dataUrl;
+    if (dataUrl.length <= MAX_BACKGROUND_STORAGE_LENGTH) return dataUrl;
+  }
+
+  return fallback;
+}
+
+async function prepareBackgroundImage(file) {
+  if (!(file instanceof File) || !file.type.startsWith('image/')) {
+    throw new Error('invalid-image');
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await loadImageFromUrl(objectUrl);
+    const sourceWidth = image.naturalWidth || image.width;
+    const sourceHeight = image.naturalHeight || image.height;
+
+    let maxEdge = MAX_BACKGROUND_EDGE;
+    let bestDataUrl = '';
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const { width, height } = getScaledDimensions(sourceWidth, sourceHeight, maxEdge);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('canvas-unavailable');
+
+      context.fillStyle = '#f8f5f0';
+      context.fillRect(0, 0, width, height);
+      context.drawImage(image, 0, 0, width, height);
+
+      bestDataUrl = exportBackgroundCanvas(canvas);
+      if (bestDataUrl.length <= MAX_BACKGROUND_STORAGE_LENGTH) return bestDataUrl;
+
+      maxEdge = Math.max(1280, Math.round(maxEdge * 0.82));
+    }
+
+    if (bestDataUrl.length > MAX_BACKGROUND_STORAGE_LENGTH) {
+      throw new Error('background-too-large');
+    }
+
+    return bestDataUrl;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function sortQuickLinks(list) {
+  return [...list].sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || String(a.createdAt).localeCompare(String(b.createdAt)));
+}
+
+async function getQuickLinks() {
+  const { [QUICK_LINKS_STORAGE_KEY]: stored = [] } = await chrome.storage.local.get(QUICK_LINKS_STORAGE_KEY);
+  return sortQuickLinks(stored.map((item, index) => normalizeQuickLink(item, index)).filter(item => item.title && item.url));
+}
+
+async function saveQuickLinks(list) {
+  quickLinks = sortQuickLinks(list).map((item, index) => ({ ...normalizeQuickLink(item, index), order: index }));
+  await chrome.storage.local.set({ [QUICK_LINKS_STORAGE_KEY]: quickLinks });
+}
+
+function renderQuickLinkCard(link) {
+  const safeTitle = escapeHtml(link.title);
+  const safeDomain = escapeHtml(summarizeUrl(link.url));
+  const safeId = escapeHtml(link.id);
+  const monogram = escapeHtml(getQuickLinkMonogram(link.title, link.url));
+  let faviconUrl = '';
+
+  try {
+    faviconUrl = `https://www.google.com/s2/favicons?domain=${new URL(link.url).hostname}&sz=64`;
+  } catch {
+    faviconUrl = '';
+  }
+
+  return `
+    <div class="quick-link-card quick-link-site-card clickable" data-action="open-quick-link" data-quick-link-id="${safeId}" title="${safeTitle} · ${safeDomain}">
+      <div class="quick-link-actions">
+        <button type="button" class="quick-link-icon-btn" data-action="edit-quick-link" data-quick-link-id="${safeId}" title="${t('quickLinkEdit')}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931ZM19.5 7.125 16.875 4.5" /></svg>
+        </button>
+        <button type="button" class="quick-link-icon-btn" data-action="delete-quick-link" data-quick-link-id="${safeId}" title="${t('quickLinkDelete')}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673A2.25 2.25 0 0 1 15.916 21.75H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.088-2.201a51.964 51.964 0 0 0-3.324 0C9.16 2.313 8.25 3.296 8.25 4.477v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+        </button>
+      </div>
+      <div class="quick-link-avatar">
+        ${faviconUrl ? `<img src="${faviconUrl}" alt="" data-hide-on-error="true" data-show-fallback-on-error="next">` : ''}
+        <span class="quick-link-avatar-fallback"${faviconUrl ? ' style="display:none"' : ''}>${monogram}</span>
+      </div>
+      <div class="quick-link-copy">
+        <div class="quick-link-name">${safeTitle}</div>
+      </div>
+    </div>`;
+}
+
+function renderQuickLinkAddCard() {
+  return `
+    <button type="button" class="quick-link-card quick-link-add-card" data-action="open-quick-link-modal" title="${t('quickLinkAddCardTitle')}" aria-label="${t('quickLinkAddCardTitle')}" data-tooltip="${t('quickLinkAddCardTitle')}">
+      <div class="quick-link-add-symbol">+</div>
+    </button>`;
+}
+
+function renderQuickLinkEmptyCard() {
+  return `
+    <div class="quick-link-empty-card">
+      <div class="quick-link-empty-title">${t('quickLinksEmptyTitle')}</div>
+      <div class="quick-link-empty-subtitle">${t('quickLinksEmptySubtitle')}</div>
+    </div>`;
+}
+
+async function renderQuickLinksSection() {
+  const grid = document.getElementById('quickLinksGrid');
+  if (!grid) return;
+
+  try {
+    quickLinks = await getQuickLinks();
+    const cards = quickLinks.map(link => renderQuickLinkCard(link));
+    if (quickLinks.length === 0) cards.unshift(renderQuickLinkEmptyCard());
+    cards.push(renderQuickLinkAddCard());
+    grid.innerHTML = cards.join('');
+  } catch (err) {
+    console.warn('[tab-out] Could not load quick links:', err);
+    grid.innerHTML = `${renderQuickLinkEmptyCard()}${renderQuickLinkAddCard()}`;
+  }
+}
+
+function syncQuickLinkModalText() {
+  const titleEl = document.getElementById('quickLinkModalTitle');
+  const submitBtn = document.getElementById('quickLinkSubmitBtn');
+  const idInput = document.getElementById('quickLinkId');
+  const isEditing = !!idInput?.value;
+
+  if (titleEl) titleEl.textContent = isEditing ? t('quickLinkModalEditTitle') : t('quickLinkModalAddTitle');
+  if (submitBtn) submitBtn.textContent = isEditing ? t('quickLinkUpdate') : t('quickLinkSave');
+}
+
+function closeQuickLinkModal() {
+  const backdrop = document.getElementById('quickLinkModalBackdrop');
+  const form = document.getElementById('quickLinkForm');
+  const idInput = document.getElementById('quickLinkId');
+  if (backdrop) backdrop.style.display = 'none';
+  if (form) form.reset();
+  if (idInput) idInput.value = '';
+  syncQuickLinkModalText();
+}
+
+function openQuickLinkModal(linkId = '') {
+  const backdrop = document.getElementById('quickLinkModalBackdrop');
+  const idInput = document.getElementById('quickLinkId');
+  const nameInput = document.getElementById('quickLinkNameInput');
+  const urlInput = document.getElementById('quickLinkUrlInput');
+  const link = quickLinks.find(item => item.id === linkId);
+
+  if (!backdrop || !idInput || !nameInput || !urlInput) return;
+
+  idInput.value = link?.id || '';
+  nameInput.value = link?.title || '';
+  urlInput.value = link?.url || '';
+  backdrop.style.display = 'flex';
+  syncQuickLinkModalText();
+  setTimeout(() => nameInput.focus(), 0);
+}
+
+async function openQuickLink(url) {
+  const targetUrl = normalizeQuickLinkUrl(url);
+  const currentTab = await chrome.tabs.getCurrent();
+
+  if (currentTab?.id) {
+    await chrome.tabs.update(currentTab.id, { url: targetUrl, active: true });
+    return;
+  }
+
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (activeTab?.id) {
+    await chrome.tabs.update(activeTab.id, { url: targetUrl, active: true });
+    return;
+  }
+
+  await chrome.tabs.create({ url: targetUrl });
+}
 
 /**
  * fetchOpenTabs()
@@ -461,13 +1060,13 @@ function checkAndShowEmptyState() {
           <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
         </svg>
       </div>
-      <div class="empty-title">Inbox zero, but for tabs.</div>
-      <div class="empty-subtitle">You're free.</div>
+      <div class="empty-title">${t('inboxZeroTitle')}</div>
+      <div class="empty-subtitle">${t('inboxZeroSubtitle')}</div>
     </div>
   `;
 
   const countEl = document.getElementById('openTabsSectionCount');
-  if (countEl) countEl.textContent = '0 domains';
+  if (countEl) countEl.textContent = t('domainsCount', 0);
 }
 
 /**
@@ -484,11 +1083,11 @@ function timeAgo(dateStr) {
   const diffHours = Math.floor((now - then) / 3600000);
   const diffDays  = Math.floor((now - then) / 86400000);
 
-  if (diffMins < 1)   return 'just now';
-  if (diffMins < 60)  return diffMins + ' min ago';
-  if (diffHours < 24) return diffHours + ' hr' + (diffHours !== 1 ? 's' : '') + ' ago';
-  if (diffDays === 1) return 'yesterday';
-  return diffDays + ' days ago';
+  if (diffMins < 1) return t('justNow');
+  if (diffMins < 60) return t('minutesAgo', diffMins);
+  if (diffHours < 24) return t('hoursAgo', diffHours);
+  if (diffDays === 1) return t('yesterday');
+  return t('daysAgo', diffDays);
 }
 
 /**
@@ -496,16 +1095,16 @@ function timeAgo(dateStr) {
  */
 function getGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (hour < 12) return t('greetingMorning');
+  if (hour < 17) return t('greetingAfternoon');
+  return t('greetingEvening');
 }
 
 /**
  * getDateDisplay() — "Friday, April 4, 2026"
  */
 function getDateDisplay() {
-  return new Date().toLocaleDateString('en-US', {
+  return new Date().toLocaleDateString(currentLanguage, {
     weekday: 'long',
     year:    'numeric',
     month:   'long',
@@ -590,13 +1189,14 @@ const FRIENDLY_DOMAINS = {
 
 function friendlyDomain(hostname) {
   if (!hostname) return '';
+  if (hostname === 'local-files') return t('localFiles');
   if (FRIENDLY_DOMAINS[hostname]) return FRIENDLY_DOMAINS[hostname];
 
   if (hostname.endsWith('.substack.com') && hostname !== 'substack.com') {
-    return capitalize(hostname.replace('.substack.com', '')) + "'s Substack";
+    return t('substackBy', hostname.replace('.substack.com', ''));
   }
   if (hostname.endsWith('.github.io')) {
-    return capitalize(hostname.replace('.github.io', '')) + ' (GitHub Pages)';
+    return t('githubPages', hostname.replace('.github.io', ''));
   }
 
   let clean = hostname
@@ -662,29 +1262,29 @@ function smartTitle(title, url) {
 
   if ((hostname === 'x.com' || hostname === 'twitter.com' || hostname === 'www.x.com') && pathname.includes('/status/')) {
     const username = pathname.split('/')[1];
-    if (username) return titleIsUrl ? `Post by @${username}` : title;
+    if (username) return titleIsUrl ? t('postByUser', username) : title;
   }
 
   if (hostname === 'github.com' || hostname === 'www.github.com') {
     const parts = pathname.split('/').filter(Boolean);
     if (parts.length >= 2) {
       const [owner, repo, ...rest] = parts;
-      if (rest[0] === 'issues' && rest[1]) return `${owner}/${repo} Issue #${rest[1]}`;
-      if (rest[0] === 'pull'   && rest[1]) return `${owner}/${repo} PR #${rest[1]}`;
-      if (rest[0] === 'blob' || rest[0] === 'tree') return `${owner}/${repo} — ${rest.slice(2).join('/')}`;
+      if (rest[0] === 'issues' && rest[1]) return t('githubIssue', owner, repo, rest[1]);
+      if (rest[0] === 'pull'   && rest[1]) return t('githubPr', owner, repo, rest[1]);
+      if (rest[0] === 'blob' || rest[0] === 'tree') return t('githubPath', owner, repo, rest.slice(2).join('/'));
       if (titleIsUrl) return `${owner}/${repo}`;
     }
   }
 
   if ((hostname === 'www.youtube.com' || hostname === 'youtube.com') && pathname === '/watch') {
-    if (titleIsUrl) return 'YouTube Video';
+    if (titleIsUrl) return t('youtubeVideo');
   }
 
   if ((hostname === 'www.reddit.com' || hostname === 'reddit.com' || hostname === 'old.reddit.com') && pathname.includes('/comments/')) {
     const parts  = pathname.split('/').filter(Boolean);
     const subIdx = parts.indexOf('r');
     if (subIdx !== -1 && parts[subIdx + 1]) {
-      if (titleIsUrl) return `r/${parts[subIdx + 1]} post`;
+      if (titleIsUrl) return t('redditPost', parts[subIdx + 1]);
     }
   }
 
@@ -741,15 +1341,18 @@ function getRealTabs() {
 function checkTabOutDupes() {
   const tabOutTabs = openTabs.filter(t => t.isTabOut);
   const banner  = document.getElementById('tabOutDupeBanner');
-  const countEl = document.getElementById('tabOutDupeCount');
   if (!banner) return;
 
   if (tabOutTabs.length > 1) {
-    if (countEl) countEl.textContent = tabOutTabs.length;
+    updateTabOutDupeBannerText(tabOutTabs.length);
     banner.style.display = 'flex';
   } else {
     banner.style.display = 'none';
   }
+}
+
+function renderOpenTabsSectionCount(domainCount, totalTabs) {
+  return `${t('domainsCount', domainCount)} &nbsp;&middot;&nbsp; <button class="action-btn close-tabs" data-action="close-all-open-tabs" style="font-size:11px;padding:3px 10px;">${ICONS.close} ${t('closeAllTabsAction', totalTabs)}</button>`;
 }
 
 
@@ -769,13 +1372,13 @@ function buildOverflowChips(hiddenTabs, urlCounts = {}) {
     try { domain = new URL(tab.url).hostname; } catch {}
     const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=16` : '';
     return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" title="${safeTitle}">
-      ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="" onerror="this.style.display='none'">` : ''}
+      ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="" data-hide-on-error="true">` : ''}
       <span class="chip-text">${label}</span>${dupeTag}
       <div class="chip-actions">
-        <button class="chip-action chip-save" data-action="defer-single-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" title="Save for later">
+        <button class="chip-action chip-save" data-action="defer-single-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" title="${t('saveForLaterTitle')}">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" /></svg>
         </button>
-        <button class="chip-action chip-close" data-action="close-single-tab" data-tab-url="${safeUrl}" title="Close this tab">
+        <button class="chip-action chip-close" data-action="close-single-tab" data-tab-url="${safeUrl}" title="${t('closeThisTabTitle')}">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
         </button>
       </div>
@@ -785,7 +1388,7 @@ function buildOverflowChips(hiddenTabs, urlCounts = {}) {
   return `
     <div class="page-chips-overflow" style="display:none">${hiddenChips}</div>
     <div class="page-chip page-chip-overflow clickable" data-action="expand-chips">
-      <span class="chip-text">+${hiddenTabs.length} more</span>
+      <span class="chip-text">${t('moreTabs', hiddenTabs.length)}</span>
     </div>`;
 }
 
@@ -815,12 +1418,12 @@ function renderDomainCard(group) {
 
   const tabBadge = `<span class="open-tabs-badge">
     ${ICONS.tabs}
-    ${tabCount} tab${tabCount !== 1 ? 's' : ''} open
+    ${t('tabsOpenBadge', tabCount)}
   </span>`;
 
   const dupeBadge = hasDupes
-    ? `<span class="open-tabs-badge" style="color:var(--accent-amber);background:rgba(200,113,58,0.08);">
-        ${totalExtras} duplicate${totalExtras !== 1 ? 's' : ''}
+    ? `<span class="open-tabs-badge duplicate-badge" style="color:var(--accent-amber);background:rgba(200,113,58,0.08);">
+        ${t('duplicateBadge', totalExtras)}
       </span>`
     : '';
 
@@ -850,13 +1453,13 @@ function renderDomainCard(group) {
     try { domain = new URL(tab.url).hostname; } catch {}
     const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=16` : '';
     return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" title="${safeTitle}">
-      ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="" onerror="this.style.display='none'">` : ''}
+      ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="" data-hide-on-error="true">` : ''}
       <span class="chip-text">${label}</span>${dupeTag}
       <div class="chip-actions">
-        <button class="chip-action chip-save" data-action="defer-single-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" title="Save for later">
+        <button class="chip-action chip-save" data-action="defer-single-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" title="${t('saveForLaterTitle')}">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" /></svg>
         </button>
-        <button class="chip-action chip-close" data-action="close-single-tab" data-tab-url="${safeUrl}" title="Close this tab">
+        <button class="chip-action chip-close" data-action="close-single-tab" data-tab-url="${safeUrl}" title="${t('closeThisTabTitle')}">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
         </button>
       </div>
@@ -866,14 +1469,14 @@ function renderDomainCard(group) {
   let actionsHtml = `
     <button class="action-btn close-tabs" data-action="close-domain-tabs" data-domain-id="${stableId}">
       ${ICONS.close}
-      Close all ${tabCount} tab${tabCount !== 1 ? 's' : ''}
+      ${t('closeAllTabsAction', tabCount)}
     </button>`;
 
   if (hasDupes) {
     const dupeUrlsEncoded = dupeUrls.map(([url]) => encodeURIComponent(url)).join(',');
     actionsHtml += `
       <button class="action-btn" data-action="dedup-keep-one" data-dupe-urls="${dupeUrlsEncoded}">
-        Close ${totalExtras} duplicate${totalExtras !== 1 ? 's' : ''}
+        ${t('closeDuplicatesAction', totalExtras)}
       </button>`;
   }
 
@@ -882,7 +1485,7 @@ function renderDomainCard(group) {
       <div class="status-bar"></div>
       <div class="mission-content">
         <div class="mission-top">
-          <span class="mission-name">${isLanding ? 'Homepages' : (group.label || friendlyDomain(group.domain))}</span>
+          <span class="mission-name">${isLanding ? t('homepages') : (group.label || friendlyDomain(group.domain))}</span>
           ${tabBadge}
           ${dupeBadge}
         </div>
@@ -891,7 +1494,7 @@ function renderDomainCard(group) {
       </div>
       <div class="mission-meta">
         <div class="mission-page-count">${tabCount}</div>
-        <div class="mission-page-label">tabs</div>
+        <div class="mission-page-label">${t('tabsLabel')}</div>
       </div>
     </div>`;
 }
@@ -932,7 +1535,7 @@ async function renderDeferredColumn() {
 
     // Render active checklist items
     if (active.length > 0) {
-      countEl.textContent = `${active.length} item${active.length !== 1 ? 's' : ''}`;
+      countEl.textContent = t('itemsCount', active.length);
       list.innerHTML = active.map(item => renderDeferredItem(item)).join('');
       list.style.display = 'block';
       empty.style.display = 'none';
@@ -974,14 +1577,14 @@ function renderDeferredItem(item) {
       <input type="checkbox" class="deferred-checkbox" data-action="check-deferred" data-deferred-id="${item.id}">
       <div class="deferred-info">
         <a href="${item.url}" target="_blank" rel="noopener" class="deferred-title" title="${(item.title || '').replace(/"/g, '&quot;')}">
-          <img src="${faviconUrl}" alt="" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px" onerror="this.style.display='none'">${item.title || item.url}
+          <img src="${faviconUrl}" alt="" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px" data-hide-on-error="true">${item.title || item.url}
         </a>
         <div class="deferred-meta">
           <span>${domain}</span>
           <span>${ago}</span>
         </div>
       </div>
-      <button class="deferred-dismiss" data-action="dismiss-deferred" data-deferred-id="${item.id}" title="Dismiss">
+      <button class="deferred-dismiss" data-action="dismiss-deferred" data-deferred-id="${item.id}" title="${t('dismissTitle')}">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
       </button>
     </div>`;
@@ -1020,6 +1623,9 @@ function renderArchiveItem(item) {
  * 6. Renders the "Saved for Later" checklist
  */
 async function renderStaticDashboard() {
+  applyStaticText();
+  await renderQuickLinksSection();
+
   // --- Header ---
   const greetingEl = document.getElementById('greeting');
   const dateEl     = document.getElementById('dateDisplay');
@@ -1149,8 +1755,8 @@ async function renderStaticDashboard() {
   const openTabsSectionTitle = document.getElementById('openTabsSectionTitle');
 
   if (domainGroups.length > 0 && openTabsSection) {
-    if (openTabsSectionTitle) openTabsSectionTitle.textContent = 'Open tabs';
-    openTabsSectionCount.innerHTML = `${domainGroups.length} domain${domainGroups.length !== 1 ? 's' : ''} &nbsp;&middot;&nbsp; <button class="action-btn close-tabs" data-action="close-all-open-tabs" style="font-size:11px;padding:3px 10px;">${ICONS.close} Close all ${realTabs.length} tabs</button>`;
+    if (openTabsSectionTitle) openTabsSectionTitle.textContent = t('openTabs');
+    openTabsSectionCount.innerHTML = renderOpenTabsSectionCount(domainGroups.length, realTabs.length);
     openTabsMissionsEl.innerHTML = domainGroups.map(g => renderDomainCard(g)).join('');
     openTabsSection.style.display = 'block';
   } else if (openTabsSection) {
@@ -1188,6 +1794,82 @@ document.addEventListener('click', async (e) => {
 
   const action = actionEl.dataset.action;
 
+  if (action === 'set-language') {
+    const language = actionEl.dataset.language;
+    if (!language || language === currentLanguage) return;
+    await setLanguagePreference(language);
+    await renderDashboard();
+    return;
+  }
+
+  if (action === 'choose-background-image') {
+    const input = document.getElementById('backgroundImageInput');
+    if (!(input instanceof HTMLInputElement)) return;
+    input.value = '';
+    input.click();
+    return;
+  }
+
+  if (action === 'clear-background-image') {
+    try {
+      await clearBackgroundPreference();
+      showToast(t('toastBackgroundCleared'));
+    } catch (err) {
+      console.warn('[tab-out] Could not clear background:', err);
+      showToast(t('toastBackgroundFailed'));
+    }
+    return;
+  }
+
+  if (action === 'open-quick-link-modal') {
+    e.preventDefault();
+    e.stopPropagation();
+    openQuickLinkModal(actionEl.dataset.quickLinkId || '');
+    return;
+  }
+
+  if (action === 'close-quick-link-modal') {
+    e.preventDefault();
+    e.stopPropagation();
+    closeQuickLinkModal();
+    return;
+  }
+
+  if (action === 'open-quick-link') {
+    const linkId = actionEl.dataset.quickLinkId;
+    const link = quickLinks.find(item => item.id === linkId);
+    if (!link) return;
+
+    try {
+      await openQuickLink(link.url);
+    } catch (err) {
+      console.warn('[tab-out] Could not open quick link:', err);
+      showToast(t('toastQuickLinkInvalidUrl'));
+    }
+    return;
+  }
+
+  if (action === 'edit-quick-link') {
+    e.preventDefault();
+    e.stopPropagation();
+    openQuickLinkModal(actionEl.dataset.quickLinkId || '');
+    return;
+  }
+
+  if (action === 'delete-quick-link') {
+    e.preventDefault();
+    e.stopPropagation();
+    const linkId = actionEl.dataset.quickLinkId;
+    const link = quickLinks.find(item => item.id === linkId);
+    if (!link) return;
+    if (!window.confirm(t('quickLinkDeleteConfirm', link.title))) return;
+
+    await saveQuickLinks(quickLinks.filter(item => item.id !== linkId));
+    await renderQuickLinksSection();
+    showToast(t('toastQuickLinkDeleted'));
+    return;
+  }
+
   // ---- Close duplicate Tab Out tabs ----
   if (action === 'close-tabout-dupes') {
     await closeTabOutDupes();
@@ -1198,7 +1880,7 @@ document.addEventListener('click', async (e) => {
       banner.style.opacity = '0';
       setTimeout(() => { banner.style.display = 'none'; banner.style.opacity = '1'; }, 400);
     }
-    showToast('Closed extra Tab Out tabs');
+    showToast(t('toastClosedExtraTabOutTabs'));
     return;
   }
 
@@ -1260,7 +1942,7 @@ document.addEventListener('click', async (e) => {
     const statTabs = document.getElementById('statTabs');
     if (statTabs) statTabs.textContent = openTabs.length;
 
-    showToast('Tab closed');
+    showToast(t('toastTabClosed'));
     return;
   }
 
@@ -1276,7 +1958,7 @@ document.addEventListener('click', async (e) => {
       await saveTabForLater({ url: tabUrl, title: tabTitle });
     } catch (err) {
       console.error('[tab-out] Failed to save tab:', err);
-      showToast('Failed to save tab');
+      showToast(t('toastSaveFailed'));
       return;
     }
 
@@ -1295,7 +1977,7 @@ document.addEventListener('click', async (e) => {
       setTimeout(() => chip.remove(), 200);
     }
 
-    showToast('Saved for later');
+    showToast(t('toastSavedForLater'));
     await renderDeferredColumn();
     return;
   }
@@ -1368,8 +2050,8 @@ document.addEventListener('click', async (e) => {
     const idx = domainGroups.indexOf(group);
     if (idx !== -1) domainGroups.splice(idx, 1);
 
-    const groupLabel = group.domain === '__landing-pages__' ? 'Homepages' : (group.label || friendlyDomain(group.domain));
-    showToast(`Closed ${urls.length} tab${urls.length !== 1 ? 's' : ''} from ${groupLabel}`);
+    const groupLabel = group.domain === '__landing-pages__' ? t('homepages') : (group.label || friendlyDomain(group.domain));
+    showToast(t('toastClosedGroupTabs', urls.length, groupLabel));
 
     const statTabs = document.getElementById('statTabs');
     if (statTabs) statTabs.textContent = openTabs.length;
@@ -1397,18 +2079,16 @@ document.addEventListener('click', async (e) => {
         b.style.opacity    = '0';
         setTimeout(() => b.remove(), 200);
       });
-      card.querySelectorAll('.open-tabs-badge').forEach(badge => {
-        if (badge.textContent.includes('duplicate')) {
-          badge.style.transition = 'opacity 0.2s';
-          badge.style.opacity    = '0';
-          setTimeout(() => badge.remove(), 200);
-        }
+      card.querySelectorAll('.duplicate-badge').forEach(badge => {
+        badge.style.transition = 'opacity 0.2s';
+        badge.style.opacity    = '0';
+        setTimeout(() => badge.remove(), 200);
       });
       card.classList.remove('has-amber-bar');
       card.classList.add('has-neutral-bar');
     }
 
-    showToast('Closed duplicates, kept one copy each');
+    showToast(t('toastClosedDuplicates'));
     return;
   }
 
@@ -1428,9 +2108,97 @@ document.addEventListener('click', async (e) => {
       animateCardOut(c);
     });
 
-    showToast('All tabs closed. Fresh start.');
+    showToast(t('toastClosedAllTabs'));
     return;
   }
+});
+
+document.getElementById('quickLinkForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const idInput = document.getElementById('quickLinkId');
+  const nameInput = document.getElementById('quickLinkNameInput');
+  const urlInput = document.getElementById('quickLinkUrlInput');
+  if (!idInput || !nameInput || !urlInput) return;
+
+  const title = nameInput.value.trim();
+  const existingId = idInput.value.trim();
+  let url;
+
+  if (!title) {
+    showToast(t('toastQuickLinkInvalidName'));
+    nameInput.focus();
+    return;
+  }
+
+  try {
+    url = normalizeQuickLinkUrl(urlInput.value);
+  } catch {
+    showToast(t('toastQuickLinkInvalidUrl'));
+    urlInput.focus();
+    return;
+  }
+
+  const nextLink = normalizeQuickLink({
+    id: existingId || `quick-link-${Date.now()}`,
+    title,
+    url,
+    createdAt: existingId ? (quickLinks.find(item => item.id === existingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+    order: existingId ? (quickLinks.find(item => item.id === existingId)?.order ?? quickLinks.length) : quickLinks.length,
+  }, quickLinks.length);
+
+  if (existingId) {
+    await saveQuickLinks(quickLinks.map(item => item.id === existingId ? nextLink : item));
+    showToast(t('toastQuickLinkUpdated'));
+  } else {
+    await saveQuickLinks([...quickLinks, nextLink]);
+    showToast(t('toastQuickLinkAdded'));
+  }
+
+  await renderQuickLinksSection();
+  closeQuickLinkModal();
+});
+
+document.getElementById('quickLinkModalBackdrop')?.addEventListener('click', (e) => {
+  if (e.target.id === 'quickLinkModalBackdrop') closeQuickLinkModal();
+});
+
+document.getElementById('backgroundImageInput')?.addEventListener('change', async (e) => {
+  const input = e.target;
+  if (!(input instanceof HTMLInputElement)) return;
+
+  const [file] = input.files || [];
+  if (!file) return;
+
+  try {
+    const imageDataUrl = await prepareBackgroundImage(file);
+    await saveBackgroundPreference(imageDataUrl);
+    showToast(t('toastBackgroundUpdated'));
+  } catch (err) {
+    console.warn('[tab-out] Could not update background:', err);
+    showToast(t('toastBackgroundFailed'));
+  } finally {
+    input.value = '';
+  }
+});
+
+document.addEventListener('error', (e) => {
+  const target = e.target;
+  if (!(target instanceof HTMLImageElement)) return;
+
+  if (target.dataset.hideOnError === 'true') {
+    target.style.display = 'none';
+  }
+
+  if (target.dataset.showFallbackOnError === 'next' && target.nextElementSibling instanceof HTMLElement) {
+    target.nextElementSibling.style.display = 'flex';
+  }
+}, true);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const backdrop = document.getElementById('quickLinkModalBackdrop');
+  if (backdrop?.style.display === 'flex') closeQuickLinkModal();
 });
 
 // ---- Archive toggle — expand/collapse the archive section ----
@@ -1469,7 +2237,7 @@ document.addEventListener('input', async (e) => {
     );
 
     archiveList.innerHTML = results.map(item => renderArchiveItem(item)).join('')
-      || '<div style="font-size:12px;color:var(--muted);padding:8px 0">No results</div>';
+      || `<div style="font-size:12px;color:var(--muted);padding:8px 0">${t('noResults')}</div>`;
   } catch (err) {
     console.warn('[tab-out] Archive search failed:', err);
   }
@@ -1479,4 +2247,10 @@ document.addEventListener('input', async (e) => {
 /* ----------------------------------------------------------------
    INITIALIZE
    ---------------------------------------------------------------- */
-renderDashboard();
+async function initializeApp() {
+  await loadLanguagePreference();
+  await loadBackgroundPreference();
+  await renderDashboard();
+}
+
+initializeApp();
