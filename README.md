@@ -1,91 +1,222 @@
 # Tab Out
 
-**Keep tabs on your tabs.**
+一个用于替换浏览器新标签页的标签管理扩展。
 
-Tab Out is a Chrome extension that replaces your new tab page with a dashboard of everything you have open. Tabs are grouped by domain, with homepages (Gmail, X, LinkedIn, etc.) pulled into their own group. Close tabs with a satisfying swoosh + confetti.
+Tab Out 会把你当前打开的标签页整理成一个可视化面板，支持按域名查看、按窗口查看、快捷入口、自定义背景、会话收纳，以及在窗口视图中直接拖拽调整浏览器真实标签顺序。
 
-No server. No account. No external API calls. Just a Chrome extension.
-
----
-
-## Install with a coding agent
-
-Send your coding agent (Claude Code, Codex, etc.) this repo and say **"install this"**:
-
-```
-https://github.com/zarazhangrui/tab-out
-```
-
-The agent will walk you through it. Takes about 1 minute.
+整个项目纯本地运行，无服务端、无账号系统、无外部数据上传。
 
 ---
 
-## Features
+## 项目简介
 
-- **See all your tabs at a glance** on a clean grid, grouped by domain
-- **Homepages group** pulls Gmail inbox, X home, YouTube, LinkedIn, GitHub homepages into one card
-- **Close tabs with style** with swoosh sound + confetti burst
-- **Duplicate detection** flags when you have the same page open twice, with one-click cleanup
-- **Click any tab to jump to it** across windows, no new tab opened
-- **Save for later** bookmark tabs to a checklist before closing them
-- **Localhost grouping** shows port numbers next to each tab so you can tell your vibe coding projects apart
-- **Expandable groups** show the first 8 tabs with a clickable "+N more"
-- **100% local** your data never leaves your machine
-- **Pure Chrome extension** no server, no Node.js, no npm, no setup beyond loading the extension
+Tab Out 是一个基于 Chrome Extension Manifest V3 的新标签页扩展。
+
+加载扩展后，浏览器新建标签页会被替换为 Tab Out 面板，你可以在这里：
+
+- 查看当前所有打开中的标签页
+- 按域名分组整理标签
+- 切换到窗口视图，按真实窗口顺序管理标签
+- 直接拖拽窗口视图中的标签，浏览器顶部标签栏顺序也会同步变化
+- 保存常用快捷入口
+- 自定义纯色背景或上传背景图片
+- 切换中英文、浅色/深色主题
+- 将当前窗口或全部窗口收纳成会话，后续一键恢复
 
 ---
 
-## Manual Setup
+## 当前功能
 
-**1. Clone the repo**
+- 新标签页替换
+  加载扩展后，Chrome 新建标签页将直接进入 Tab Out 面板。
+
+- 域名视图
+  将打开中的标签按域名分组展示，主页类页面会被单独归类。
+
+- 窗口视图
+  按浏览器窗口分组展示标签，并按真实标签顺序排列。
+
+- 标签拖拽排序
+  在窗口视图中，可对同一窗口内的标签进行拖拽排序，排序结果会同步到浏览器真实标签栏。
+
+- 快捷入口
+  支持自定义常用网站入口，可新增、编辑、删除。
+
+- 自定义背景
+  支持纯色背景切换，也支持上传自定义背景图片。
+
+- 主题切换
+  支持浅色模式与深色模式。
+
+- 多语言
+  支持中文与英文界面切换。
+
+- 会话收纳
+  支持收纳当前窗口或全部窗口，形成类似 OneTab 的会话列表，后续可恢复全部或单个标签。
+
+- 稍后保存
+  支持将标签保存到“稍后处理”列表，再关闭当前标签。
+
+- 重复标签识别
+  自动识别重复 URL，并支持一键清理重复项。
+
+- 本地数据存储
+  快捷入口、背景、主题、语言、会话等数据均保存在 `chrome.storage.local`。
+
+---
+
+## 安装方式
+
+### 方式一：手动加载扩展
+
+1. 克隆仓库
 
 ```bash
 git clone https://github.com/zarazhangrui/tab-out.git
+cd tab-out
 ```
 
-**2. Load the Chrome extension**
+2. 打开 Chrome 扩展管理页
 
-1. Open Chrome and go to `chrome://extensions`
-2. Enable **Developer mode** (top-right toggle)
-3. Click **Load unpacked**
-4. Navigate to the `extension/` folder inside the cloned repo and select it
+```text
+chrome://extensions
+```
 
-**3. Open a new tab**
+3. 打开右上角的“开发者模式”
 
-You'll see Tab Out.
+4. 点击“加载已解压的扩展程序”
+
+5. 选择仓库中的 `extension/` 目录
+
+6. 安装完成后，新建一个标签页即可看到 Tab Out
+
+### 方式二：通过 Coding Agent 协助安装
+
+如果你使用 Codex、Claude Code 等 coding agent，也可以直接把仓库地址发给它，让它帮你完成安装引导：
+
+```text
+https://github.com/zarazhangrui/tab-out
+```
 
 ---
 
-## How it works
+## 使用说明
 
-```
-You open a new tab
-  -> Tab Out shows your open tabs grouped by domain
-  -> Homepages (Gmail, X, etc.) get their own group at the top
-  -> Click any tab title to jump to it
-  -> Close groups you're done with (swoosh + confetti)
-  -> Save tabs for later before closing them
-```
+### 1. 域名视图
 
-Everything runs inside the Chrome extension. No external server, no API calls, no data sent anywhere. Saved tabs are stored in `chrome.storage.local`.
+- 默认可查看“打开中的标签”
+- 标签会按域名聚合为卡片
+- 点击标签标题可直接跳转到对应标签页
+- 点击卡片底部按钮可关闭该域名分组下的全部标签
+
+### 2. 窗口视图
+
+- 在“打开中的标签”区域右上角切换到“窗口”
+- 每个窗口会单独显示
+- 标签按真实顺序排列
+- 可在同一窗口内拖拽标签调整顺序
+- 拖拽完成后，浏览器实际标签顺序会同步更新
+
+### 3. 快捷入口
+
+- 页面顶部可展示常用快捷入口
+- 支持新增、编辑、删除
+- 可设置点击后在当前标签页打开，或在新标签页打开
+
+### 4. 会话收纳
+
+- 右侧悬浮按钮可打开“收纳”相关操作
+- 支持收纳当前窗口
+- 支持收纳全部窗口
+- 收纳后会进入最近会话列表，可恢复全部或单个标签
+
+### 5. 外观设置
+
+- 支持中文 / English 切换
+- 支持浅色 / 深色模式切换
+- 支持纯色背景切换
+- 支持上传自定义背景图片
 
 ---
 
-## Tech stack
+## 数据与权限说明
 
-| What | How |
-|------|-----|
-| Extension | Chrome Manifest V3 |
-| Storage | chrome.storage.local |
-| Sound | Web Audio API (synthesized, no files) |
-| Animations | CSS transitions + JS confetti particles |
+### 使用到的扩展权限
+
+`manifest.json` 当前使用了以下权限：
+
+- `tabs`
+  读取、聚焦、关闭、移动浏览器标签
+
+- `activeTab`
+  获取当前激活标签信息
+
+- `storage`
+  保存用户偏好设置与本地数据
+
+### 本地存储内容
+
+以下内容会保存在 `chrome.storage.local`：
+
+- 界面语言
+- 主题模式
+- 快捷入口
+- 背景图片或背景色
+- 快捷入口打开方式
+- 收纳会话
+- 稍后保存列表
+
+项目不会把这些数据发送到任何远程服务器。
 
 ---
 
-## License
+## 技术栈
+
+| 模块 | 说明 |
+| --- | --- |
+| 扩展规范 | Chrome Manifest V3 |
+| 页面 | 原生 HTML / CSS / JavaScript |
+| 存储 | `chrome.storage.local` |
+| 标签操作 | `chrome.tabs` API |
+| 新标签页替换 | `chrome_url_overrides` |
+| 动效 | CSS Transition + 原生 JS |
+
+---
+
+## 目录结构
+
+```text
+tab-out/
+├── extension/
+│   ├── app.js
+│   ├── background.js
+│   ├── boot.js
+│   ├── index.html
+│   ├── manifest.json
+│   ├── style.css
+│   └── icons/
+└── README.md
+```
+
+---
+
+## 开发说明
+
+- 这是一个纯前端扩展项目
+- 不依赖 Node.js 运行时即可使用
+- 修改 `extension/` 下文件后，回到 `chrome://extensions` 点击“刷新”即可看到最新效果
+
+---
+
+## 许可协议
 
 MIT
 
 ---
 
-Built by [Zara](https://x.com/zarazhangrui)
+## 致谢
+
+原项目作者：
+
+- GitHub: https://github.com/zarazhangrui
+- 项目地址: https://github.com/zarazhangrui/tab-out

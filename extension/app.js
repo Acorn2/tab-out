@@ -508,7 +508,8 @@ function syncThemeToggleControl() {
   themeTrigger.classList.toggle('is-dark', isDark);
   themeTrigger.setAttribute('aria-pressed', isDark ? 'true' : 'false');
   themeTrigger.setAttribute('aria-label', label);
-  themeTrigger.title = label;
+  themeTrigger.setAttribute('data-tooltip', label);
+  themeTrigger.title = ''; // Clear native tooltip to avoid overlap
 
   if (themeState) themeState.textContent = isDark ? t('themeDarkMode') : t('themeLightMode');
 }
@@ -769,12 +770,14 @@ function applyStaticText() {
   if (openTabsViewSwitcher) openTabsViewSwitcher.setAttribute('aria-label', t('openTabsViewLabel'));
   if (openTabsDomainViewBtn || openTabsWindowViewBtn) syncOpenTabsViewControls();
   if (stashTrigger) {
-    stashTrigger.title = t('stashToolLabel');
+    stashTrigger.setAttribute('data-tooltip', t('stashToolLabel'));
     stashTrigger.setAttribute('aria-label', t('stashToolLabel'));
+    stashTrigger.title = '';
   }
   if (sessionTrigger) {
-    sessionTrigger.title = t('sessionToolLabel');
+    sessionTrigger.setAttribute('data-tooltip', t('sessionToolLabel'));
     sessionTrigger.setAttribute('aria-label', t('sessionToolLabel'));
+    sessionTrigger.title = '';
   }
   if (themeTrigger) {
     syncThemeToggleControl();
@@ -782,8 +785,10 @@ function applyStaticText() {
   if (stashMenuTitle) stashMenuTitle.textContent = t('stashMenuTitle');
   if (stashMenuHint) stashMenuHint.textContent = t('stashMenuHint');
   if (settingsTrigger) {
-    settingsTrigger.title = isSettingsModalOpen ? t('closeSettings') : t('openSettings');
-    settingsTrigger.setAttribute('aria-label', isSettingsModalOpen ? t('closeSettings') : t('openSettings'));
+    const label = isSettingsModalOpen ? t('closeSettings') : t('openSettings');
+    settingsTrigger.setAttribute('data-tooltip', label);
+    settingsTrigger.setAttribute('aria-label', label);
+    settingsTrigger.title = '';
   }
   if (sessionsTitle) sessionsTitle.textContent = t('sessionsTitle');
   if (sessionsEmpty) sessionsEmpty.textContent = t('sessionsEmpty');
@@ -2284,8 +2289,13 @@ function renderDomainCard(group) {
       </button>`;
   }
 
+  const domain = group.domain || '';
+  const brandColor = getBrandColor(domain);
+
   return `
-    <div class="mission-card domain-card ${hasDupes ? 'has-amber-bar' : 'has-neutral-bar'}" data-domain-id="${stableId}">
+    <div class="mission-card domain-card ${hasDupes ? 'has-amber-bar' : 'has-neutral-bar'}" 
+         data-domain-id="${stableId}" 
+         style="--brand-color: ${brandColor}; border-top-color: ${brandColor}CC">
       <div class="status-bar"></div>
       <div class="mission-content">
         <div class="mission-top">
@@ -2301,6 +2311,36 @@ function renderDomainCard(group) {
         <div class="mission-page-label">${t('tabsLabel')}</div>
       </div>
     </div>`;
+}
+
+/**
+ * Returns a brand-aligned color for a given domain/hostname
+ */
+function getBrandColor(domain) {
+  if (!domain) return 'var(--warm-gray)';
+  
+  const host = domain.toLowerCase();
+  if (host.includes('google')) return '#4285F4';
+  if (host.includes('github')) return '#A371F7';
+  if (host.includes('youtube')) return '#FF0000';
+  if (host.includes('facebook') || host.includes('fb.')) return '#1877F2';
+  if (host.includes('twitter') || host.includes('x.com')) return '#1DA1F2';
+  if (host.includes('linkedin')) return '#0A66C2';
+  if (host.includes('figma')) return '#F24E1E';
+  if (host.includes('doubao')) return '#6A5ACD';
+  if (host.includes('feishu') || host.includes('lark')) return '#3370FF';
+  if (host.includes('notion')) return '#000000';
+  if (host.includes('stackoverflow')) return '#F48225';
+  if (host.includes('reddit')) return '#FF4500';
+  if (host.includes('bilibili')) return '#FB7299';
+  if (host.includes('zhihu')) return '#0084FF';
+  
+  // Default fallback based on string hash for consistency
+  let hash = 0;
+  for (let i = 0; i < host.length; i++) {
+    hash = host.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return `hsl(${Math.abs(hash) % 360}, 65%, 60%)`;
 }
 
 
@@ -3417,8 +3457,14 @@ document.addEventListener('dragover', (e) => {
   if (targetWindowId !== draggedWindowTabState.windowId) return;
 
   const rect = item.getBoundingClientRect();
-  const insertAfter = e.clientY > rect.top + rect.height / 2;
-  item.classList.add(insertAfter ? 'is-drop-after' : 'is-drop-before');
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  
+  // In a grid, we consider both X and Y. 
+  // If the mouse is in the right half or bottom half of the card, we insert after.
+  const isAfter = e.clientX > centerX || (e.clientX > rect.left && e.clientY > centerY);
+  
+  item.classList.add(isAfter ? 'is-drop-after' : 'is-drop-before');
 });
 
 document.addEventListener('drop', async (e) => {
@@ -3436,7 +3482,10 @@ document.addEventListener('drop', async (e) => {
   }
 
   const rect = item.getBoundingClientRect();
-  const insertAfter = e.clientY > rect.top + rect.height / 2;
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const insertAfter = e.clientX > centerX || (e.clientX > rect.left && e.clientY > centerY);
+  
   clearWindowDragIndicators();
 
   if (targetWindowId !== draggedWindowTabState.windowId) {
