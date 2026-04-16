@@ -29,7 +29,6 @@ let quickLinks = [];
 let currentLanguage = 'zh-CN';
 let currentTheme = 'light';
 let customBackgroundImage = '';
-let customBackgroundColor = '';
 let lastRealTabCount = 0;
 let isSessionPanelOpen = false;
 let isStashMenuOpen = false;
@@ -39,6 +38,7 @@ let quickLinksOpenMode = 'current-tab';
 let currentOpenTabsView = 'domains';
 let draggedWindowTabState = null;
 let dashboardRefreshTimer = null;
+let activeQuickLinkMenuId = '';
 
 const LANGUAGE_STORAGE_KEY = 'uiLanguage';
 const THEME_STORAGE_KEY = 'uiTheme';
@@ -53,15 +53,6 @@ const MAX_BACKGROUND_EDGE = 2200;
 const MAX_BACKGROUND_STORAGE_LENGTH = 3_500_000;
 const DEFAULT_BACKGROUND_COLOR = '#f8f5f0';
 const DEFAULT_DARK_BACKGROUND_COLOR = '#10161d';
-const BACKGROUND_COLOR_PRESETS = [
-  '#eef2f9',
-  '#dff1ff',
-  '#f4e3f7',
-  '#e7f6d8',
-  '#fff3b8',
-  '#eadff2',
-  '#f6ebdf',
-];
 
 const MESSAGES = {
   'zh-CN': {
@@ -84,8 +75,9 @@ const MESSAGES = {
     quickLinksEmptySubtitle: '',
     quickLinkAddCardTitle: '新增快捷入口',
     quickLinkAddCardSubtitle: '自定义名称和网址，做成你自己的起手板。',
-    quickLinkEdit: '编辑入口',
-    quickLinkDelete: '删除入口',
+    quickLinkMore: '更多操作',
+    quickLinkEdit: '编辑',
+    quickLinkDelete: '删除',
     quickLinkModalAddTitle: '新增常用入口',
     quickLinkModalEditTitle: '编辑常用入口',
     quickLinkModalClose: '关闭弹窗',
@@ -101,8 +93,7 @@ const MESSAGES = {
     settingsLinks: '快捷入口',
     settingsLanguageLabel: '界面语言',
     settingsBackgroundLabel: '背景设置',
-    settingsBackgroundHint: '选一个纯色，或者上传你自己的图片。',
-    settingsSolidBackgroundLabel: '纯色背景',
+    settingsBackgroundHint: '上传你自己的图片作为背景。',
     settingsImageUploadLabel: '自定义图片',
     settingsLinkOpenModeLabel: '点击快捷入口时',
     settingsLinkOpenModeHint: '选择在当前页打开，或新开一个标签页打开。',
@@ -232,8 +223,9 @@ const MESSAGES = {
     quickLinksEmptySubtitle: '',
     quickLinkAddCardTitle: 'Add a shortcut',
     quickLinkAddCardSubtitle: 'Name it, paste the URL, and make this page your own.',
-    quickLinkEdit: 'Edit link',
-    quickLinkDelete: 'Delete link',
+    quickLinkMore: 'More actions',
+    quickLinkEdit: 'Edit',
+    quickLinkDelete: 'Delete',
     quickLinkModalAddTitle: 'Add quick link',
     quickLinkModalEditTitle: 'Edit quick link',
     quickLinkModalClose: 'Close dialog',
@@ -249,8 +241,7 @@ const MESSAGES = {
     settingsLinks: 'Quick Links',
     settingsLanguageLabel: 'Interface language',
     settingsBackgroundLabel: 'Background',
-    settingsBackgroundHint: 'Pick a solid color, or upload your own image.',
-    settingsSolidBackgroundLabel: 'Solid colors',
+    settingsBackgroundHint: 'Upload your own image as the background.',
     settingsImageUploadLabel: 'Custom image',
     settingsLinkOpenModeLabel: 'When clicking a quick link',
     settingsLinkOpenModeHint: 'Open it here, or open it in a new tab.',
@@ -462,18 +453,7 @@ function mixHexColors(baseColor, targetColor, weight = 0.5) {
 }
 
 function getEffectiveBackgroundColor() {
-  if (!customBackgroundColor) return getDefaultBackgroundColor();
-
-  const normalized = normalizeHexColor(customBackgroundColor);
-  if (!normalized) return customBackgroundColor;
-
-  if (currentTheme === 'dark') {
-    // Preserve the chosen hue in dark mode, but pull it toward the dark theme base
-    // so the theme switch still meaningfully controls the overall atmosphere.
-    return mixHexColors(normalized, DEFAULT_DARK_BACKGROUND_COLOR, 0.78);
-  }
-
-  return normalized;
+  return getDefaultBackgroundColor();
 }
 
 function updateSolidSurfacePalette() {
@@ -528,7 +508,6 @@ function applyThemePreference(theme) {
   document.body.classList.toggle('theme-light', currentTheme !== 'dark');
   applyBackgroundSelection({
     imageDataUrl: customBackgroundImage,
-    colorValue: customBackgroundColor,
   });
   syncThemeToggleControl();
 }
@@ -551,9 +530,7 @@ async function setThemePreference(theme) {
 function syncBackgroundControls() {
   const triggerBtn = document.getElementById('backgroundImageTriggerBtn');
   const clearBtn = document.getElementById('backgroundImageClearBtn');
-  const solidBlock = document.getElementById('settingsSolidBackgroundBlock');
   const imageBlock = document.getElementById('settingsImageUploadBlock');
-  const swatchGroup = document.getElementById('settingsColorSwatches');
   const triggerLabel = customBackgroundImage ? t('backgroundImageChange') : t('backgroundImageUpload');
 
   if (triggerBtn) {
@@ -567,24 +544,10 @@ function syncBackgroundControls() {
     clearBtn.textContent = t('backgroundImageClear');
     clearBtn.title = t('backgroundImageClear');
     clearBtn.setAttribute('aria-label', t('backgroundImageClear'));
-    clearBtn.hidden = !(customBackgroundImage || customBackgroundColor);
+    clearBtn.hidden = !customBackgroundImage;
   }
 
-  if (solidBlock) solidBlock.classList.toggle('is-active', !!customBackgroundColor && !customBackgroundImage);
   if (imageBlock) imageBlock.classList.toggle('is-active', !!customBackgroundImage);
-  if (swatchGroup) swatchGroup.setAttribute('aria-label', t('settingsSolidBackgroundLabel'));
-
-  document.querySelectorAll('.settings-color-swatch').forEach(button => {
-    const color = button.dataset.backgroundColor || '';
-    const isActive = color === customBackgroundColor && !customBackgroundImage;
-    const colorName = currentLanguage === 'zh-CN'
-      ? button.dataset.colorNameZh || color
-      : button.dataset.colorNameEn || color;
-    button.classList.toggle('is-active', isActive);
-    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-    button.setAttribute('aria-label', colorName);
-    button.title = colorName;
-  });
 }
 
 function setStashMenuOpen(nextOpen) {
@@ -778,7 +741,6 @@ function applyStaticText() {
   const settingsLanguageLabel = document.getElementById('settingsLanguageLabel');
   const settingsBackgroundLabel = document.getElementById('settingsBackgroundLabel');
   const settingsBackgroundHint = document.getElementById('settingsBackgroundHint');
-  const settingsSolidBackgroundLabel = document.getElementById('settingsSolidBackgroundLabel');
   const settingsImageUploadLabel = document.getElementById('settingsImageUploadLabel');
   const settingsLinkOpenModeLabel = document.getElementById('settingsLinkOpenModeLabel');
   const settingsLinkOpenModeHint = document.getElementById('settingsLinkOpenModeHint');
@@ -845,7 +807,6 @@ function applyStaticText() {
   if (settingsLanguageLabel) settingsLanguageLabel.textContent = t('settingsLanguageLabel');
   if (settingsBackgroundLabel) settingsBackgroundLabel.textContent = t('settingsBackgroundLabel');
   if (settingsBackgroundHint) settingsBackgroundHint.textContent = t('settingsBackgroundHint');
-  if (settingsSolidBackgroundLabel) settingsSolidBackgroundLabel.textContent = t('settingsSolidBackgroundLabel');
   if (settingsImageUploadLabel) settingsImageUploadLabel.textContent = t('settingsImageUploadLabel');
   if (settingsLinkOpenModeLabel) settingsLinkOpenModeLabel.textContent = t('settingsLinkOpenModeLabel');
   if (settingsLinkOpenModeHint) settingsLinkOpenModeHint.textContent = t('settingsLinkOpenModeHint');
@@ -912,9 +873,8 @@ function normalizeQuickLink(link, index = 0) {
   };
 }
 
-function applyBackgroundSelection({ imageDataUrl = '', colorValue = '' } = {}) {
+function applyBackgroundSelection({ imageDataUrl = '' } = {}) {
   customBackgroundImage = typeof imageDataUrl === 'string' ? imageDataUrl : '';
-  customBackgroundColor = typeof colorValue === 'string' ? colorValue : '';
   updateSolidSurfacePalette();
   document.body.style.setProperty(
     '--custom-background-image',
@@ -925,20 +885,16 @@ function applyBackgroundSelection({ imageDataUrl = '', colorValue = '' } = {}) {
     getEffectiveBackgroundColor()
   );
   document.body.classList.toggle('has-custom-background', !!customBackgroundImage);
-  document.body.classList.toggle('has-solid-background', !!customBackgroundColor && !customBackgroundImage);
+  document.body.classList.remove('has-solid-background');
   syncBackgroundControls();
 }
 
 async function loadBackgroundPreference() {
   try {
-    const {
-      [BACKGROUND_IMAGE_STORAGE_KEY]: storedBackground = '',
-      [BACKGROUND_COLOR_STORAGE_KEY]: storedColor = '',
-    } = await chrome.storage.local.get([BACKGROUND_IMAGE_STORAGE_KEY, BACKGROUND_COLOR_STORAGE_KEY]);
-
+    const { [BACKGROUND_IMAGE_STORAGE_KEY]: storedBackground = '' } = await chrome.storage.local.get(BACKGROUND_IMAGE_STORAGE_KEY);
+    await chrome.storage.local.remove(BACKGROUND_COLOR_STORAGE_KEY);
     applyBackgroundSelection({
       imageDataUrl: typeof storedBackground === 'string' ? storedBackground : '',
-      colorValue: typeof storedColor === 'string' ? storedColor : '',
     });
   } catch {
     applyBackgroundSelection();
@@ -948,14 +904,7 @@ async function loadBackgroundPreference() {
 async function saveBackgroundPreference(imageDataUrl) {
   await chrome.storage.local.set({ [BACKGROUND_IMAGE_STORAGE_KEY]: imageDataUrl });
   await chrome.storage.local.remove(BACKGROUND_COLOR_STORAGE_KEY);
-  applyBackgroundSelection({ imageDataUrl, colorValue: '' });
-}
-
-async function saveBackgroundColorPreference(colorValue) {
-  const nextColor = BACKGROUND_COLOR_PRESETS.includes(colorValue) ? colorValue : '';
-  await chrome.storage.local.set({ [BACKGROUND_COLOR_STORAGE_KEY]: nextColor });
-  await chrome.storage.local.remove(BACKGROUND_IMAGE_STORAGE_KEY);
-  applyBackgroundSelection({ imageDataUrl: '', colorValue: nextColor });
+  applyBackgroundSelection({ imageDataUrl });
 }
 
 async function clearBackgroundPreference() {
@@ -1066,6 +1015,7 @@ function renderQuickLinkCard(link) {
   const safeDomain = escapeHtml(summarizeUrl(link.url));
   const safeId = escapeHtml(link.id);
   const monogram = escapeHtml(getQuickLinkMonogram(link.title, link.url));
+  const isMenuOpen = activeQuickLinkMenuId === link.id;
   let faviconUrl = '';
 
   try {
@@ -1075,14 +1025,29 @@ function renderQuickLinkCard(link) {
   }
 
   return `
-    <div class="quick-link-card quick-link-site-card clickable" data-action="open-quick-link" data-quick-link-id="${safeId}" title="${safeTitle} · ${safeDomain}">
-      <div class="quick-link-actions">
-        <button type="button" class="quick-link-icon-btn" data-action="edit-quick-link" data-quick-link-id="${safeId}" title="${t('quickLinkEdit')}">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931ZM19.5 7.125 16.875 4.5" /></svg>
+    <div class="quick-link-card quick-link-site-card clickable${isMenuOpen ? ' is-menu-open' : ''}" data-action="open-quick-link" data-quick-link-id="${safeId}" title="${safeTitle} · ${safeDomain}">
+      <div class="quick-link-menu-shell" data-action="noop">
+        <button type="button" class="quick-link-menu-trigger" data-action="toggle-quick-link-menu" data-quick-link-id="${safeId}" title="${t('quickLinkMore')}" aria-label="${t('quickLinkMore')}" aria-expanded="${isMenuOpen ? 'true' : 'false'}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="6" cy="12" r="1.85" />
+            <circle cx="12" cy="12" r="1.85" />
+            <circle cx="18" cy="12" r="1.85" />
+          </svg>
         </button>
-        <button type="button" class="quick-link-icon-btn" data-action="delete-quick-link" data-quick-link-id="${safeId}" title="${t('quickLinkDelete')}">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673A2.25 2.25 0 0 1 15.916 21.75H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.088-2.201a51.964 51.964 0 0 0-3.324 0C9.16 2.313 8.25 3.296 8.25 4.477v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
-        </button>
+        <div class="quick-link-menu"${isMenuOpen ? '' : ' hidden'}>
+          <button type="button" class="quick-link-menu-item" data-action="edit-quick-link" data-quick-link-id="${safeId}">
+            <span class="quick-link-menu-item-icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931ZM19.5 7.125 16.875 4.5" /></svg>
+            </span>
+            <span>${t('quickLinkEdit')}</span>
+          </button>
+          <button type="button" class="quick-link-menu-item is-danger" data-action="delete-quick-link" data-quick-link-id="${safeId}">
+            <span class="quick-link-menu-item-icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673A2.25 2.25 0 0 1 15.916 21.75H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.088-2.201a51.964 51.964 0 0 0-3.324 0C9.16 2.313 8.25 3.296 8.25 4.477v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+            </span>
+            <span>${t('quickLinkDelete')}</span>
+          </button>
+        </div>
       </div>
       <div class="quick-link-avatar">
         ${faviconUrl ? `<img src="${faviconUrl}" alt="" data-hide-on-error="true" data-show-fallback-on-error="next">` : ''}
@@ -1116,6 +1081,9 @@ async function renderQuickLinksSection() {
 
   try {
     quickLinks = await getQuickLinks();
+    if (activeQuickLinkMenuId && !quickLinks.some(link => link.id === activeQuickLinkMenuId)) {
+      activeQuickLinkMenuId = '';
+    }
     const cards = quickLinks.map(link => renderQuickLinkCard(link));
     if (quickLinks.length === 0) cards.unshift(renderQuickLinkEmptyCard());
     cards.push(renderQuickLinkAddCard());
@@ -2852,6 +2820,8 @@ document.addEventListener('click', async (e) => {
 
   const action = actionEl.dataset.action;
 
+  if (action === 'noop') return;
+
   if (action === 'set-language') {
     const language = actionEl.dataset.language;
     if (!language || language === currentLanguage) return;
@@ -2916,20 +2886,6 @@ document.addEventListener('click', async (e) => {
       showToast(t('toastBackgroundCleared'));
     } catch (err) {
       console.warn('[tab-out] Could not clear background:', err);
-      showToast(t('toastBackgroundFailed'));
-    }
-    return;
-  }
-
-  if (action === 'set-background-color') {
-    const colorValue = actionEl.dataset.backgroundColor || '';
-    if (!BACKGROUND_COLOR_PRESETS.includes(colorValue)) return;
-
-    try {
-      await saveBackgroundColorPreference(colorValue);
-      showToast(t('toastBackgroundUpdated'));
-    } catch (err) {
-      console.warn('[tab-out] Could not update background color:', err);
       showToast(t('toastBackgroundFailed'));
     }
     return;
@@ -3043,6 +2999,11 @@ document.addEventListener('click', async (e) => {
   if (action === 'open-quick-link-modal') {
     e.preventDefault();
     e.stopPropagation();
+    const hadOpenQuickLinkMenu = !!activeQuickLinkMenuId;
+    activeQuickLinkMenuId = '';
+    if (hadOpenQuickLinkMenu) {
+      await renderQuickLinksSection();
+    }
     openQuickLinkModal(actionEl.dataset.quickLinkId || '');
     return;
   }
@@ -3055,6 +3016,11 @@ document.addEventListener('click', async (e) => {
   }
 
   if (action === 'open-quick-link') {
+    const hadOpenQuickLinkMenu = !!activeQuickLinkMenuId;
+    activeQuickLinkMenuId = '';
+    if (hadOpenQuickLinkMenu && quickLinksOpenMode === 'new-tab') {
+      await renderQuickLinksSection();
+    }
     const linkId = actionEl.dataset.quickLinkId;
     const link = quickLinks.find(item => item.id === linkId);
     if (!link) return;
@@ -3075,9 +3041,23 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
+  if (action === 'toggle-quick-link-menu') {
+    e.preventDefault();
+    e.stopPropagation();
+    const linkId = actionEl.dataset.quickLinkId || '';
+    activeQuickLinkMenuId = activeQuickLinkMenuId === linkId ? '' : linkId;
+    await renderQuickLinksSection();
+    return;
+  }
+
   if (action === 'edit-quick-link') {
     e.preventDefault();
     e.stopPropagation();
+    const hadOpenQuickLinkMenu = !!activeQuickLinkMenuId;
+    activeQuickLinkMenuId = '';
+    if (hadOpenQuickLinkMenu) {
+      await renderQuickLinksSection();
+    }
     openQuickLinkModal(actionEl.dataset.quickLinkId || '');
     return;
   }
@@ -3090,6 +3070,7 @@ document.addEventListener('click', async (e) => {
     if (!link) return;
     if (!window.confirm(t('quickLinkDeleteConfirm', link.title))) return;
 
+    activeQuickLinkMenuId = '';
     await saveQuickLinks(quickLinks.filter(item => item.id !== linkId));
     await renderQuickLinksSection();
     showToast(t('toastQuickLinkDeleted'));
@@ -3439,6 +3420,15 @@ document.addEventListener('click', (e) => {
   setSessionPanelOpen(false);
 });
 
+document.addEventListener('click', (e) => {
+  if (!activeQuickLinkMenuId) return;
+  if (e.target.closest('.quick-link-menu-shell')) return;
+  activeQuickLinkMenuId = '';
+  renderQuickLinksSection().catch(err => {
+    console.warn('[tab-out] Could not close quick link menu:', err);
+  });
+});
+
 document.getElementById('backgroundImageInput')?.addEventListener('change', async (e) => {
   const input = e.target;
   if (!(input instanceof HTMLInputElement)) return;
@@ -3478,6 +3468,12 @@ document.addEventListener('keydown', (e) => {
   if (isSettingsModalOpen) setSettingsModalOpen(false);
   if (isStashMenuOpen) setStashMenuOpen(false);
   if (isSessionPanelOpen) setSessionPanelOpen(false);
+  if (activeQuickLinkMenuId) {
+    activeQuickLinkMenuId = '';
+    renderQuickLinksSection().catch(err => {
+      console.warn('[tab-out] Could not close quick link menu:', err);
+    });
+  }
 });
 
 // ---- Archive toggle — expand/collapse the archive section ----
