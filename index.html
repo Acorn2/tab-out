@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TabNest</title>
+  <meta name="description" content="TabNest helps you quickly close, organize, and restore browser tabs from a calm new tab workspace.">
+  <style>
+    :root {
+      --bg: #f6efe6;
+      --surface: rgba(255, 252, 247, 0.78);
+      --surface-strong: rgba(255, 252, 247, 0.92);
+      --border: rgba(210, 191, 170, 0.65);
+      --ink: #1f1814;
+      --muted: #6f655d;
+      --accent: #c96d34;
+      --accent-soft: rgba(201, 109, 52, 0.12);
+      --sage: #5a7a62;
+      --shadow: 0 22px 60px rgba(57, 35, 19, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.86), transparent 28%),
+        radial-gradient(circle at 85% 15%, rgba(242, 204, 177, 0.35), transparent 24%),
+        linear-gradient(180deg, #fbf8f3 0%, var(--bg) 100%);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page {
+      width: min(1140px, calc(100vw - 24px));
+      margin: 0 auto;
+      padding: 20px 0 56px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+      padding: 22px;
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      background: var(--surface);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -40px;
+      top: -40px;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(201, 109, 52, 0.18), transparent 68%);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(210, 191, 170, 0.55);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow img {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-size: clamp(2.5rem, 9vw, 4.8rem);
+      line-height: 0.98;
+      letter-spacing: -0.05em;
+      max-width: 9ch;
+    }
+
+    .hero-copy {
+      display: grid;
+      gap: 14px;
+      max-width: 62ch;
+    }
+
+    .hero-copy p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.72;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .button {
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(57, 35, 19, 0.08);
+    }
+
+    .button-primary {
+      background: linear-gradient(135deg, #ca723d, #b85f2a);
+      color: #fff;
+      border-color: rgba(201, 109, 52, 0.4);
+    }
+
+    .button-secondary {
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--ink);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .stat {
+      padding: 14px 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(210, 191, 170, 0.45);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .section {
+      margin-top: 22px;
+      padding: 22px;
+      border-radius: 28px;
+      border: 1px solid var(--border);
+      background: var(--surface-strong);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .section-heading {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-size: clamp(1.8rem, 5vw, 2.7rem);
+      letter-spacing: -0.04em;
+    }
+
+    .section-heading p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 62ch;
+      line-height: 1.72;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .feature {
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(210, 191, 170, 0.4);
+    }
+
+    .feature strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .feature p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.66;
+    }
+
+    .shot-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .shot-card {
+      overflow: hidden;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid rgba(210, 191, 170, 0.5);
+      box-shadow: 0 16px 36px rgba(57, 35, 19, 0.09);
+    }
+
+    .shot-frame {
+      position: relative;
+      aspect-ratio: 16 / 10;
+      background:
+        linear-gradient(180deg, rgba(255, 248, 241, 0.9), rgba(249, 243, 236, 0.84));
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .shot-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .shot-card.is-missing .shot-frame {
+      background:
+        radial-gradient(circle at top right, rgba(201, 109, 52, 0.12), transparent 32%),
+        linear-gradient(180deg, rgba(255, 251, 245, 0.95), rgba(247, 241, 234, 0.9));
+    }
+
+    .shot-card.is-missing .shot-frame::before {
+      content: "Drop screenshot here";
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: min(76%, 320px);
+      min-height: 52px;
+      padding: 18px 20px;
+      border-radius: 18px;
+      border: 1.5px dashed rgba(201, 109, 52, 0.34);
+      background: rgba(255, 255, 255, 0.64);
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .shot-card figcaption {
+      display: grid;
+      gap: 4px;
+      padding: 14px 16px 16px;
+    }
+
+    .shot-card strong {
+      font-size: 15px;
+    }
+
+    .shot-card span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.62;
+    }
+
+    .footer {
+      margin-top: 22px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .footer a {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    @media (min-width: 768px) {
+      .page {
+        width: min(1140px, calc(100vw - 48px));
+        padding-top: 28px;
+      }
+
+      .hero {
+        grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+        align-items: end;
+        padding: 30px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .feature-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .shot-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .shot-card:first-child {
+        grid-column: span 2;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .feature-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .shot-grid {
+        grid-template-columns: 1.2fr 1fr 1fr;
+      }
+
+      .shot-card:first-child {
+        grid-column: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">
+          <img src="extension/icons/icon48.png" alt="">
+          TabNest
+        </div>
+        <h1>Close tabs fast. Stay in control.</h1>
+        <p>
+          TabNest turns Chrome's new tab page into a calm control center for tab cleanup, grouped browsing, session recovery, and everyday focus.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#screenshots">View screenshots</a>
+          <a class="button button-secondary" href="privacy-policy.html">Privacy policy</a>
+          <a class="button button-secondary" href="https://github.com/Acorn2/tab-out" target="_blank" rel="noopener noreferrer">GitHub repo</a>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <strong>Built for quick tab cleanup</strong>
+          <span>Close single tabs, grouped tabs, and duplicates without digging through crowded tab strips.</span>
+        </div>
+        <div class="stat">
+          <strong>Recover your workflow later</strong>
+          <span>Stash windows into sessions, restore them when needed, and keep your browser context organized.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-heading">
+        <h2>What makes TabNest useful</h2>
+        <p>
+          The extension starts with a practical promise: help you close messy tabs faster. Then it adds window view, session stash, and quick links so cleanup does not break your flow.
+        </p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature">
+          <strong>Fast close actions</strong>
+          <p>See open tabs immediately and close one tab, a whole group, or duplicate clutter in just a few clicks.</p>
+        </article>
+        <article class="feature">
+          <strong>Domain and window views</strong>
+          <p>Switch between grouped domain cleanup and a browser-accurate window view depending on how you want to work.</p>
+        </article>
+        <article class="feature">
+          <strong>Session stash and restore</strong>
+          <p>Stash the current window or multiple windows, then reopen the exact browsing context later when you are ready.</p>
+        </article>
+        <article class="feature">
+          <strong>Personal workspace</strong>
+          <p>Save quick links, choose your theme, and keep the new tab page useful instead of empty.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="screenshots">
+      <div class="section-heading">
+        <h2>Product screenshots</h2>
+        <p>
+          Put your store screenshots in <code>site-assets/screenshots/</code>. This page is already wired to display the three files below.
+        </p>
+      </div>
+
+      <div class="shot-grid">
+        <figure class="shot-card" data-shot-card>
+          <div class="shot-frame">
+            <img src="site-assets/screenshots/homepage.png" alt="TabNest homepage screenshot" data-shot-image>
+          </div>
+          <figcaption>
+            <strong>Homepage overview</strong>
+            <span>The landing view that helps users quickly understand open tabs, quick links, and cleanup actions.</span>
+          </figcaption>
+        </figure>
+
+        <figure class="shot-card" data-shot-card>
+          <div class="shot-frame">
+            <img src="site-assets/screenshots/windowsPage.png" alt="TabNest window view screenshot" data-shot-image>
+          </div>
+          <figcaption>
+            <strong>Window view</strong>
+            <span>Show how tabs are grouped by real browser window and how drag-to-reorder keeps layout under control.</span>
+          </figcaption>
+        </figure>
+
+        <figure class="shot-card" data-shot-card>
+          <div class="shot-frame">
+            <img src="site-assets/screenshots/opensession.png" alt="TabNest session stash screenshot" data-shot-image>
+          </div>
+          <figcaption>
+            <strong>Session stash</strong>
+            <span>Highlight how users can stash sessions, recover windows later, and keep active workspaces lightweight.</span>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <div class="footer">
+      GitHub Pages homepage for TabNest. Add screenshots to <code>site-assets/screenshots/</code> and they will appear here automatically.
+    </div>
+  </main>
+
+  <script>
+    document.querySelectorAll('[data-shot-card]').forEach(card => {
+      const image = card.querySelector('[data-shot-image]');
+      if (!image) return;
+
+      image.addEventListener('error', () => {
+        card.classList.add('is-missing');
+        image.remove();
+      }, { once: true });
+    });
+  </script>
+</body>
+</html>
