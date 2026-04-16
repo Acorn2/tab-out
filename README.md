@@ -148,9 +148,6 @@ https://github.com/zarazhangrui/tab-out
 - `tabs`
   读取、聚焦、关闭、移动浏览器标签
 
-- `activeTab`
-  获取当前激活标签信息
-
 - `storage`
   保存用户偏好设置与本地数据
 

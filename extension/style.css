@@ -5,6 +5,8 @@
    ============================================================ */
 
 :root {
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-display: Georgia, "Times New Roman", "Noto Serif SC", "Songti SC", serif;
   --ink: #1a1613;
   --paper: #f8f5f0;
   --warm-gray: #e8e2da;
@@ -44,7 +46,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   background: var(--custom-background-color);
   color: var(--ink);
   min-height: 100vh;
@@ -434,7 +436,7 @@ header {
 }
 
 .header-left h1 {
-  font-family: 'Newsreader', serif;
+  font-family: var(--font-display);
   font-weight: 300;
   font-size: 22px;
   line-height: 1.05;
@@ -549,7 +551,7 @@ header {
 }
 
 .language-option {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -741,7 +743,7 @@ body.theme-dark.has-custom-background .quick-link-modal {
 }
 
 .quick-links-heading h2 {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 11px;
   letter-spacing: 0.22em;
@@ -870,7 +872,7 @@ body.theme-dark.has-custom-background .quick-link-modal {
 }
 
 .quick-link-avatar-fallback {
-  font-family: 'Newsreader', serif;
+  font-family: var(--font-display);
   font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.4px;
@@ -1097,7 +1099,7 @@ body.theme-dark.has-custom-background .quick-link-modal {
 }
 
 .tab-cleanup-btn {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-size: 12px;
   font-weight: 600;
   padding: 8px 20px;
@@ -1164,7 +1166,7 @@ body.theme-dark.has-custom-background .quick-link-modal {
 }
 
 .section-header h2 {
-  font-family: 'Newsreader', serif;
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 18px;
   font-style: italic;
@@ -1821,7 +1823,7 @@ body.has-custom-background .window-tab-item {
 
 .mission-page-count {
   font-size: 20px;
-  font-family: 'Newsreader', serif;
+  font-family: var(--font-display);
   font-weight: 300;
   color: var(--ink);
   line-height: 1;
@@ -1843,7 +1845,7 @@ body.has-custom-background .window-tab-item {
 
 .action-btn {
   font-size: 11px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-weight: 500;
   padding: 5px 14px;
   border-radius: 4px;
@@ -1922,7 +1924,7 @@ body.has-custom-background .window-tab-item {
   transform: translateX(-50%) translateY(80px);
   background: var(--ink);
   color: var(--paper);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
   padding: 12px 24px;
@@ -1978,7 +1980,7 @@ body.has-custom-background .window-tab-item {
 }
 
 .quick-link-modal-header h3 {
-  font-family: 'Newsreader', serif;
+  font-family: var(--font-display);
   font-size: 24px;
   font-weight: 400;
   letter-spacing: -0.3px;
@@ -2029,7 +2031,7 @@ body.has-custom-background .window-tab-item {
   background: rgba(255, 253, 249, 0.96);
   border-radius: 12px;
   padding: 12px 14px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-size: 14px;
   color: var(--ink);
   outline: none;
@@ -2143,7 +2145,7 @@ footer::before {
 }
 
 .stat-num {
-  font-family: 'Newsreader', serif;
+  font-family: var(--font-display);
   font-size: 28px;
   font-weight: 400;
   color: var(--ink);
@@ -2222,7 +2224,7 @@ footer::before {
 }
 
 .refresh-btn {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-size: 11px;
   font-weight: 500;
   color: var(--accent-amber);
@@ -2331,7 +2333,7 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 }
 
 .empty-title {
-  font-family: 'Newsreader', serif;
+  font-family: var(--font-display);
   font-size: 20px;
   font-weight: 400;
   font-style: italic;
@@ -2415,7 +2417,7 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 
 /* "Update now" button — small, filled, sage green */
 .update-banner-btn {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-size: 12px;
   font-weight: 500;
   color: #fff;
@@ -2888,7 +2890,7 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 }
 
 .settings-modal-header h3 {
-  font-family: 'Newsreader', serif;
+  font-family: var(--font-display);
   font-size: 30px;
   font-weight: 400;
   letter-spacing: -0.04em;
@@ -3862,7 +3864,7 @@ body.theme-dark .floating-tool-badge {
 }
 
 .archive-toggle {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-size: 12px;
   font-weight: 500;
   color: var(--muted);
@@ -3903,7 +3905,7 @@ body.theme-dark .floating-tool-badge {
 }
 
 .archive-search {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-size: 12px;
   width: 100%;
   padding: 8px 12px;

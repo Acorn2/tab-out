@@ -865,6 +865,74 @@ function getQuickLinkMonogram(title, url) {
   return parts.slice(0, 2).map(part => part.charAt(0).toUpperCase()).join('') || '+';
 }
 
+function getHostnameFromUrl(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+function getReadableTextColor(color) {
+  const value = String(color || '').trim().toLowerCase();
+  if (!value) return '#ffffff';
+
+  if (value.startsWith('#')) {
+    const hex = value.slice(1);
+    const normalized = hex.length === 3
+      ? hex.split('').map(part => part + part).join('')
+      : hex;
+
+    if (/^[0-9a-f]{6}$/.test(normalized)) {
+      const r = parseInt(normalized.slice(0, 2), 16);
+      const g = parseInt(normalized.slice(2, 4), 16);
+      const b = parseInt(normalized.slice(4, 6), 16);
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      return luminance > 0.64 ? '#1f1a17' : '#ffffff';
+    }
+  }
+
+  const hslMatch = value.match(/hsl\(\s*[\d.]+\s*,\s*[\d.]+%\s*,\s*([\d.]+)%\s*\)/);
+  if (hslMatch) {
+    const lightness = Number(hslMatch[1]);
+    return lightness > 62 ? '#1f1a17' : '#ffffff';
+  }
+
+  return '#ffffff';
+}
+
+function getLocalFaviconDataUrl(url, title = '', size = 32) {
+  const hostname = getHostnameFromUrl(url);
+  const label = getQuickLinkMonogram(title, url).slice(0, size <= 16 ? 1 : 2) || '?';
+  const background = hostname ? getBrandColor(hostname) : '#8b7f74';
+  const foreground = getReadableTextColor(background);
+  const fontSize = size <= 16 ? 11 : size <= 20 ? 12 : size <= 32 ? 14 : 24;
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <rect width="${size}" height="${size}" rx="${Math.max(4, Math.round(size * 0.22))}" fill="${background}"/>
+      <text x="50%" y="50%" fill="${foreground}" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="700" text-anchor="middle" dominant-baseline="central">${escapeHtml(label)}</text>
+    </svg>
+  `.trim();
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function getChromeFaviconUrl(url, size = 32) {
+  const pageUrl = String(url || '').trim();
+  if (!pageUrl) return '';
+  try {
+    new URL(pageUrl);
+    return `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(pageUrl)}&size=${size}`;
+  } catch {
+    return '';
+  }
+}
+
+function getFaviconSource(url, title = '', size = 32, fallbackUrl = '') {
+  const candidate = String(fallbackUrl || '').trim();
+  return candidate || getChromeFaviconUrl(url, size) || getLocalFaviconDataUrl(url, title, size);
+}
+
 function normalizeQuickLinkUrl(rawUrl) {
   let normalized = String(rawUrl || '').trim();
   if (!normalized) throw new Error('invalid-url');
@@ -1028,13 +1096,7 @@ function renderQuickLinkCard(link) {
   const safeId = escapeHtml(link.id);
   const monogram = escapeHtml(getQuickLinkMonogram(link.title, link.url));
   const isMenuOpen = activeQuickLinkMenuId === link.id;
-  let faviconUrl = '';
-
-  try {
-    faviconUrl = `https://www.google.com/s2/favicons?domain=${new URL(link.url).hostname}&sz=64`;
-  } catch {
-    faviconUrl = '';
-  }
+  const faviconUrl = escapeHtml(getFaviconSource(link.url, link.title, 64));
 
   return `
     <div class="quick-link-card quick-link-site-card clickable${isMenuOpen ? ' is-menu-open' : ''}" data-action="open-quick-link" data-quick-link-id="${safeId}" title="${safeTitle} · ${safeDomain}">
@@ -2234,15 +2296,7 @@ function renderWindowCard(group) {
     const label = cleanTitle(smartTitle(stripTitleNoise(tab.title || ''), tab.url), '');
     const safeTitle = escapeHtml(label || tab.url || '');
     const safeMeta = escapeHtml(getDisplayUrl(tab.url));
-    let faviconUrl = '';
-
-    try {
-      const parsed = new URL(tab.url);
-      const domain = parsed.hostname;
-      faviconUrl = escapeHtml(tab.favIconUrl || (domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=32` : ''));
-    } catch {
-      faviconUrl = escapeHtml(tab.favIconUrl || '');
-    }
+    const faviconUrl = escapeHtml(getFaviconSource(tab.url, tab.title, 32, tab.favIconUrl));
 
     return `
       <div class="window-tab-item${tab.active ? ' is-active' : ''}" draggable="true" data-action="focus-tab-id" data-tab-id="${tab.id}" data-window-id="${group.windowId}" data-tab-index="${tab.index}">
@@ -2298,11 +2352,9 @@ function buildOverflowChips(hiddenTabs, urlCounts = {}) {
     const chipClass = count > 1 ? ' chip-has-dupes' : '';
     const safeUrl   = (tab.url || '').replace(/"/g, '&quot;');
     const safeTitle = label.replace(/"/g, '&quot;');
-    let domain = '';
-    try { domain = new URL(tab.url).hostname; } catch {}
-    const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=16` : '';
+    const faviconUrl = getFaviconSource(tab.url, label, 16);
     return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" title="${safeTitle}">
-      ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="" data-hide-on-error="true">` : ''}
+      <img class="chip-favicon" src="${faviconUrl}" alt="" data-hide-on-error="true">
       <span class="chip-text">${label}</span>${dupeTag}
       <div class="chip-actions">
         <button class="chip-action chip-save" data-action="defer-single-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" title="${t('saveForLaterTitle')}">
@@ -2379,11 +2431,9 @@ function renderDomainCard(group) {
     const chipClass = count > 1 ? ' chip-has-dupes' : '';
     const safeUrl   = (tab.url || '').replace(/"/g, '&quot;');
     const safeTitle = label.replace(/"/g, '&quot;');
-    let domain = '';
-    try { domain = new URL(tab.url).hostname; } catch {}
-    const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=16` : '';
+    const faviconUrl = getFaviconSource(tab.url, label, 16);
     return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" title="${safeTitle}">
-      ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="" data-hide-on-error="true">` : ''}
+      <img class="chip-favicon" src="${faviconUrl}" alt="" data-hide-on-error="true">
       <span class="chip-text">${label}</span>${dupeTag}
       <div class="chip-actions">
         <button class="chip-action chip-save" data-action="defer-single-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" title="${t('saveForLaterTitle')}">
@@ -2474,7 +2524,7 @@ function renderSessionCard(session) {
   const meta = `${t('sessionTabsCount', session.tabs.length)} · ${t('sessionWindowsCount', getSessionWindowCount(session))} · ${timeAgo(session.createdAt)}`;
   const domainSummary = escapeHtml(getSessionTopDomains(session, 3).join(' · '));
   const previewTabs = session.tabs.slice(0, 4).map(tab => {
-    const faviconUrl = escapeHtml(tab.favIconUrl || `https://www.google.com/s2/favicons?domain=${summarizeUrl(tab.url).split('/')[0]}&sz=32`);
+    const faviconUrl = escapeHtml(getFaviconSource(tab.url, tab.title, 32, tab.favIconUrl));
     const safeTitle = escapeHtml(tab.title || tab.url);
     const safeUrl = escapeHtml(tab.url);
 
@@ -2639,9 +2689,8 @@ async function renderDeferredColumn() {
  * domain, time ago, dismiss button.
  */
 function renderDeferredItem(item) {
-  let domain = '';
-  try { domain = new URL(item.url).hostname.replace(/^www\./, ''); } catch {}
-  const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+  const domain = getHostnameFromUrl(item.url);
+  const faviconUrl = getFaviconSource(item.url, item.title, 16);
   const ago = timeAgo(item.savedAt);
 
   return `

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TabNest Privacy Policy</title>
+  <style>
+    :root {
+      --bg: #f7f3ed;
+      --panel: rgba(255, 252, 247, 0.92);
+      --panel-border: rgba(209, 193, 176, 0.72);
+      --ink: #1f1a17;
+      --muted: #6f655d;
+      --accent: #c8713a;
+      --accent-soft: rgba(200, 113, 58, 0.12);
+      --shadow: 0 20px 50px rgba(37, 29, 24, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), transparent 34%),
+        linear-gradient(180deg, #fcfaf6 0%, var(--bg) 100%);
+      line-height: 1.65;
+    }
+
+    main {
+      width: min(920px, calc(100vw - 32px));
+      margin: 32px auto 64px;
+    }
+
+    .hero,
+    .card {
+      border: 1px solid var(--panel-border);
+      background: var(--panel);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 32px;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 16px 0 10px;
+      font-size: clamp(2rem, 4vw, 3.3rem);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin: 0;
+      max-width: 60ch;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .meta {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .card {
+      padding: 26px 24px;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 1.45rem;
+      letter-spacing: -0.03em;
+    }
+
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 1rem;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    ul {
+      margin: 10px 0 0;
+      padding-left: 18px;
+    }
+
+    li + li {
+      margin-top: 6px;
+    }
+
+    .lang-label {
+      display: inline-block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .notice {
+      border-left: 4px solid var(--accent);
+      background: rgba(255, 255, 255, 0.55);
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-top: 18px;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    @media (max-width: 760px) {
+      main {
+        width: min(100vw - 20px, 920px);
+        margin: 10px auto 24px;
+      }
+
+      .hero,
+      .card {
+        border-radius: 22px;
+      }
+
+      .hero {
+        padding: 24px 18px;
+      }
+
+      .card {
+        padding: 20px 18px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div class="eyebrow">TabNest</div>
+      <h1>Privacy Policy</h1>
+      <p class="subtitle">
+        This policy explains how TabNest handles tab data, settings, and other information when you use the Chrome extension.
+      </p>
+      <div class="meta">Last updated: April 16, 2026</div>
+    </section>
+
+    <div class="grid">
+      <section class="card">
+        <div class="lang-label">English</div>
+        <h2>TabNest Privacy Policy</h2>
+
+        <p>
+          TabNest is a Chrome extension that replaces the browser's new tab page with a workspace for organizing tabs, windows, quick links, and saved sessions.
+        </p>
+
+        <h3>1. Information TabNest handles</h3>
+        <p>To provide its features, TabNest may access or locally store the following information:</p>
+        <ul>
+          <li>Open tab metadata, such as tab titles, URLs, favicon URLs, active state, tab index, and window ID</li>
+          <li>Saved sessions created by the user, including tab titles and URLs stored in <code>chrome.storage.local</code></li>
+          <li>Quick links created by the user</li>
+          <li>Saved-for-later items created by the user</li>
+          <li>User preferences such as language, theme, background settings, and view mode</li>
+          <li>Custom background images selected by the user, stored locally in the browser</li>
+        </ul>
+
+        <h3>2. How the information is used</h3>
+        <ul>
+          <li>To display and organize the user's currently open tabs and windows</li>
+          <li>To let the user close, move, reorder, stash, and restore tabs and sessions</li>
+          <li>To save preferences and personalize the new tab page</li>
+          <li>To show quick links, duplicate detection, and saved tab content chosen by the user</li>
+        </ul>
+
+        <h3>3. Where data is stored</h3>
+        <p>
+          TabNest stores its settings and saved content locally in the browser using <code>chrome.storage.local</code>. TabNest does not require an account and does not send this locally stored data to a developer-operated server.
+        </p>
+
+        <h3>4. External requests and third parties</h3>
+        <p>
+          TabNest does not operate its own backend service and does not send locally stored sessions, preferences, or quick links to any developer-managed server.
+        </p>
+        <p>
+          The extension uses local browser storage for saved data and may use Chrome's built-in favicon retrieval mechanism to display website icons. Any network activity related to open tabs is initiated by the websites the user chooses to visit in Chrome, not by a TabNest backend.
+        </p>
+
+        <h3>5. Data sharing</h3>
+        <p>
+          TabNest does not sell user data. TabNest does not share locally stored session data, quick links, or preferences with the developer or with unrelated third parties.
+        </p>
+
+        <h3>6. Data retention and deletion</h3>
+        <ul>
+          <li>Saved sessions, quick links, saved-for-later items, and preferences remain in local browser storage until the user edits, deletes, or clears them</li>
+          <li>Removing the extension will generally remove the extension's locally stored data from Chrome</li>
+        </ul>
+
+        <h3>7. Security</h3>
+        <p>
+          TabNest is designed to operate locally in the browser and does not maintain a remote database of user content.
+        </p>
+
+        <h3>8. Children's privacy</h3>
+        <p>
+          TabNest is not directed to children and is intended as a general productivity tool for browser users.
+        </p>
+
+        <h3>9. Changes to this policy</h3>
+        <p>
+          This policy may be updated from time to time. Any material changes should be reflected on this page by updating the "Last updated" date.
+        </p>
+
+        <h3>10. Contact</h3>
+        <p>
+          For questions about this policy, you can contact the developer through the project repository:
+          <a href="https://github.com/zarazhangrui/tab-out/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a>.
+        </p>
+      </section>
+
+      <section class="card">
+        <div class="lang-label">中文</div>
+        <h2>TabNest 隐私政策</h2>
+
+        <p>
+          TabNest 是一个 Chrome 扩展，用于替换浏览器新标签页，并提供标签整理、窗口整理、快捷入口和会话收纳等功能。
+        </p>
+
+        <h3>1. TabNest 处理的信息</h3>
+        <p>为了提供核心功能，TabNest 可能会访问或在本地存储以下信息：</p>
+        <ul>
+          <li>当前打开标签页的元数据，例如标签标题、URL、favicon URL、激活状态、标签顺序和窗口 ID</li>
+          <li>用户主动创建的会话收纳数据，包括保存在 <code>chrome.storage.local</code> 中的标签标题和 URL</li>
+          <li>用户主动创建的快捷入口</li>
+          <li>用户主动保存的“稍后处理”标签</li>
+          <li>语言、主题、背景、视图模式等偏好设置</li>
+          <li>用户选择上传的自定义背景图片，该图片保存在浏览器本地</li>
+        </ul>
+
+        <h3>2. 信息的用途</h3>
+        <ul>
+          <li>用于展示并整理用户当前打开的标签页和窗口</li>
+          <li>用于实现关闭、移动、拖拽排序、收纳和恢复标签/会话等功能</li>
+          <li>用于保存界面偏好和个性化设置</li>
+          <li>用于展示用户选择保存的快捷入口、重复标签识别结果和稍后处理内容</li>
+        </ul>
+
+        <h3>3. 数据存储位置</h3>
+        <p>
+          TabNest 的设置和保存内容默认存储在浏览器本地的 <code>chrome.storage.local</code> 中。TabNest 不要求用户注册账号，也不会把这些本地存储的数据发送到开发者自建服务器。
+        </p>
+
+        <h3>4. 外部请求与第三方服务</h3>
+        <p>
+          TabNest 不运行自有后端服务，也不会把本地存储的会话、偏好设置或快捷入口发送到开发者自建服务器。
+        </p>
+        <p>
+          当前版本的扩展使用浏览器本地存储保存数据，并可能通过 Chrome 内置的 favicon 获取机制来显示网站图标。与打开中的网页相关的网络请求，来自用户在 Chrome 中主动访问的网站，而不是 TabNest 自身的后端服务。
+        </p>
+
+        <h3>5. 数据共享</h3>
+        <p>
+          TabNest 不出售用户数据。TabNest 不会把本地保存的会话、快捷入口、偏好设置等内容共享给开发者或无关第三方。
+        </p>
+
+        <h3>6. 数据保留与删除</h3>
+        <ul>
+          <li>会话、快捷入口、稍后处理内容和偏好设置会保留在本地浏览器存储中，直到用户主动修改、删除或清理它们</li>
+          <li>卸载扩展后，Chrome 通常会删除该扩展对应的本地存储数据</li>
+        </ul>
+
+        <h3>7. 安全性</h3>
+        <p>
+          TabNest 设计为主要在浏览器本地运行，不维护远程用户内容数据库。
+        </p>
+
+        <h3>8. 儿童隐私</h3>
+        <p>
+          TabNest 不是面向儿童设计的产品，而是面向普通浏览器用户的效率工具。
+        </p>
+
+        <h3>9. 政策更新</h3>
+        <p>
+          本政策可能会不时更新。如有重要变更，应通过更新本页面中的“最后更新日期”进行说明。
+        </p>
+
+        <h3>10. 联系方式</h3>
+        <p>
+          如对本政策有疑问，可通过项目仓库联系开发者：
+          <a href="https://github.com/zarazhangrui/tab-out/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a>。
+        </p>
+      </section>
+    </div>
+
+    <section class="card notice">
+      <strong>Note / 说明：</strong>
+      This policy is written to match the current implementation in this repository. If you change remote resources, permissions, analytics, or data handling before publishing, update this page before submitting to the Chrome Web Store.
+      本政策按当前仓库实现编写。如果你在正式发布前调整了远程资源、权限、统计能力或数据处理方式，请先同步更新本页面，再提交 Chrome 商店审核。
+    </section>
+  </main>
+</body>
+</html>
