@@ -1,5 +1,5 @@
 /* ================================================================
-   Tab Out — Dashboard App (Pure Extension Edition)
+   TabNest — Dashboard App (Pure Extension Edition)
 
    This file is the brain of the dashboard. Now that the dashboard
    IS the extension page (not inside an iframe), it can call
@@ -47,6 +47,7 @@ const BACKGROUND_COLOR_STORAGE_KEY = 'customBackgroundColor';
 const TAB_SESSIONS_STORAGE_KEY = 'tabSessions';
 const QUICK_LINKS_OPEN_MODE_STORAGE_KEY = 'quickLinksOpenMode';
 const OPEN_TABS_VIEW_STORAGE_KEY = 'openTabsView';
+const SESSIONS_VIEWED_COUNT_KEY = 'sessionsViewedCount'; // New storage key
 const MAX_BACKGROUND_EDGE = 2200;
 const MAX_BACKGROUND_STORAGE_LENGTH = 3_500_000;
 const DEFAULT_BACKGROUND_COLOR = '#f8f5f0';
@@ -69,7 +70,7 @@ const MESSAGES = {
     greetingMorning: '早上好',
     greetingAfternoon: '下午好',
     greetingEvening: '晚上好',
-    tabOutDupeBanner: count => `你打开了 <strong>${count}</strong> 个 Tab Out 标签页。只保留当前这个吗？`,
+    tabOutDupeBanner: count => `你打开了 <strong>${count}</strong> 个 TabNest 标签页。只保留当前这个吗？`,
     closeExtras: '关闭多余标签',
     openTabs: '打开中的标签',
     openTabsViewLabel: '切换标签视图',
@@ -132,8 +133,8 @@ const MESSAGES = {
     toastBackgroundUpdated: '背景已更新',
     toastBackgroundCleared: '已恢复默认背景',
     toastBackgroundFailed: '背景设置失败，请换一张图片试试',
-    sessionsTitle: '会话收纳',
-    sessionsEmpty: '把当前窗口或全部窗口收纳成会话，稍后可以像 OneTab 一样整组恢复。',
+    sessionsTitle: '最近会话',
+    sessionsEmpty: '记录并快速恢复之前的窗口标签。',
     sessionFabLabel: '收纳',
     sessionRecent: '最近会话',
     sessionPanelClose: '关闭收纳面板',
@@ -160,7 +161,7 @@ const MESSAGES = {
     archiveSearchPlaceholder: '搜索已归档的标签...',
     statOpenTabs: '打开标签',
     footerCreditEyebrow: '原作者',
-    footerCreditMain: 'Tab Out 由 Zara Zhang 创作并开源',
+    footerCreditMain: '原项目由 Zara Zhang 创作并开源',
     footerProjectLink: '原项目',
     footerAuthorLink: 'GitHub',
     inboxZeroTitle: '标签清零了。',
@@ -184,7 +185,7 @@ const MESSAGES = {
     closeThisTabTitle: '关闭此标签',
     dismissTitle: '移除',
     noResults: '没有结果',
-    toastClosedExtraTabOutTabs: '已关闭多余的 Tab Out 标签页',
+    toastClosedExtraTabOutTabs: '已关闭多余的 TabNest 标签页',
     toastTabClosed: '标签已关闭',
     toastTabReordered: '标签顺序已更新',
     toastTabReorderFailed: '调整标签顺序失败',
@@ -217,7 +218,7 @@ const MESSAGES = {
     greetingMorning: 'Good morning',
     greetingAfternoon: 'Good afternoon',
     greetingEvening: 'Good evening',
-    tabOutDupeBanner: count => `You have <strong>${count}</strong> Tab Out tabs open. Keep just this one?`,
+    tabOutDupeBanner: count => `You have <strong>${count}</strong> TabNest tabs open. Keep just this one?`,
     closeExtras: 'Close extras',
     openTabs: 'Open tabs',
     openTabsViewLabel: 'Switch tab view',
@@ -308,7 +309,7 @@ const MESSAGES = {
     archiveSearchPlaceholder: 'Search archived tabs...',
     statOpenTabs: 'Open tabs',
     footerCreditEyebrow: 'Original Creator',
-    footerCreditMain: 'Tab Out was created and open-sourced by Zara Zhang',
+    footerCreditMain: 'The original project was created and open-sourced by Zara Zhang',
     footerProjectLink: 'Original project',
     footerAuthorLink: 'GitHub',
     inboxZeroTitle: 'Inbox zero, but for tabs.',
@@ -332,7 +333,7 @@ const MESSAGES = {
     closeThisTabTitle: 'Close this tab',
     dismissTitle: 'Dismiss',
     noResults: 'No results',
-    toastClosedExtraTabOutTabs: 'Closed extra Tab Out tabs',
+    toastClosedExtraTabOutTabs: 'Closed extra TabNest tabs',
     toastTabClosed: 'Tab closed',
     toastTabReordered: 'Tab order updated',
     toastTabReorderFailed: 'Failed to reorder tab',
@@ -376,7 +377,13 @@ function t(key, ...args) {
 async function loadLanguagePreference() {
   try {
     const { [LANGUAGE_STORAGE_KEY]: storedLanguage } = await chrome.storage.local.get(LANGUAGE_STORAGE_KEY);
-    if (storedLanguage && MESSAGES[storedLanguage]) currentLanguage = storedLanguage;
+    if (storedLanguage && MESSAGES[storedLanguage]) {
+      currentLanguage = storedLanguage;
+    } else {
+      // Auto-detect based on browser language for first-time users
+      const uiLang = (chrome.i18n.getUILanguage() || navigator.language || 'en').toLowerCase();
+      currentLanguage = uiLang.startsWith('zh') ? 'zh-CN' : 'en-US';
+    }
   } catch {
     currentLanguage = 'zh-CN';
   }
@@ -604,10 +611,24 @@ function setSessionPanelOpen(nextOpen) {
   if (isSessionPanelOpen) {
     setSettingsModalOpen(false);
     setStashMenuOpen(false);
+    
+    // Mark sessions as viewed when opening
+    markSessionsViewed();
   }
   if (trigger) trigger.setAttribute('aria-expanded', isSessionPanelOpen ? 'true' : 'false');
   if (trigger) trigger.classList.toggle('is-active', isSessionPanelOpen);
   if (panel) panel.style.display = isSessionPanelOpen ? 'block' : 'none';
+}
+
+async function markSessionsViewed() {
+  try {
+    const sessions = await getTabSessions();
+    await chrome.storage.local.set({ [SESSIONS_VIEWED_COUNT_KEY]: sessions.length });
+    // Re-render UI to hide/update badge
+    await renderSessionsFloatingPanel();
+  } catch (err) {
+    // Ignore storage errors
+  }
 }
 
 function setCurrentSettingsPanel(panel) {
@@ -1171,7 +1192,7 @@ async function openQuickLink(url) {
  * fetchOpenTabs()
  *
  * Reads all currently open browser tabs directly from Chrome.
- * Sets the extensionId flag so we can identify Tab Out's own pages.
+ * Sets the extensionId flag so we can identify TabNest's own pages.
  */
 async function fetchOpenTabs() {
   try {
@@ -1189,7 +1210,7 @@ async function fetchOpenTabs() {
       favIconUrl: t.favIconUrl,
       active:   t.active,
       pinned:   !!t.pinned,
-      // Flag Tab Out's own pages so we can detect duplicate new tabs
+      // Flag TabNest's own pages so we can detect duplicate new tabs
       isTabOut: t.url === newtabUrl || t.url === 'chrome://newtab/',
     }));
   } catch {
@@ -1346,7 +1367,7 @@ async function closeDuplicateTabs(urls, keepOne = true) {
 /**
  * closeTabOutDupes()
  *
- * Closes all duplicate Tab Out new-tab pages except the current one.
+ * Closes all duplicate TabNest new-tab pages except the current one.
  */
 async function closeTabOutDupes() {
   const extensionId = chrome.runtime.id;
@@ -1360,7 +1381,7 @@ async function closeTabOutDupes() {
 
   if (tabOutTabs.length <= 1) return;
 
-  // Keep the active Tab Out tab in the CURRENT window — that's the one the
+  // Keep the active TabNest tab in the CURRENT window — that's the one the
   // user is looking at right now. Falls back to any active one, then the first.
   const keep =
     tabOutTabs.find(t => t.active && t.windowId === currentWindow.id) ||
@@ -2047,7 +2068,7 @@ function getRealTabs() {
 /**
  * checkTabOutDupes()
  *
- * Counts how many Tab Out pages are open. If more than 1,
+ * Counts how many TabNest pages are open. If more than 1,
  * shows a banner offering to close the extras.
  */
 function checkTabOutDupes() {
@@ -2361,7 +2382,9 @@ function renderSessionCard(session) {
       <div class="session-preview-row">
         <img class="session-preview-favicon" src="${faviconUrl}" alt="" data-hide-on-error="true">
         <div class="session-preview-title">${safeTitle}</div>
-        <button type="button" class="session-preview-open" data-action="restore-session-tab" data-session-id="${escapeHtml(session.id)}" data-session-tab-url="${safeUrl}">${t('sessionRestoreTab')}</button>
+        <button type="button" class="session-preview-action" data-action="restore-session-tab" data-session-id="${escapeHtml(session.id)}" data-session-tab-url="${safeUrl}" title="${t('sessionRestoreTab')}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>
+        </button>
       </div>`;
   }).join('');
 
@@ -2419,8 +2442,18 @@ async function renderSessionsFloatingPanel() {
       listEl.innerHTML = '';
     } else {
       countEl.textContent = t('itemsCount', sessions.length);
-      badgeEl.textContent = String(sessions.length);
-      badgeEl.hidden = false;
+      
+      // Calculate unread/new sessions count
+      const { [SESSIONS_VIEWED_COUNT_KEY]: viewedCount = 0 } = await chrome.storage.local.get(SESSIONS_VIEWED_COUNT_KEY);
+      const unreadCount = Math.max(0, sessions.length - viewedCount);
+      
+      if (unreadCount > 0) {
+        badgeEl.textContent = String(unreadCount);
+        badgeEl.hidden = false;
+      } else {
+        badgeEl.hidden = true;
+      }
+      
       trigger.classList.toggle('has-sessions', true);
       listEl.innerHTML = sessions.map(session => renderSessionCard(session)).join('');
     }
@@ -2725,7 +2758,7 @@ async function renderStaticDashboard() {
   const statTabs = document.getElementById('statTabs');
   if (statTabs) statTabs.textContent = openTabs.length;
 
-  // --- Check for duplicate Tab Out tabs ---
+  // --- Check for duplicate TabNest tabs ---
   checkTabOutDupes();
 
   // --- Render floating sessions tool ---
@@ -2736,6 +2769,7 @@ async function renderStaticDashboard() {
 }
 
 async function renderDashboard() {
+  await fetchOpenTabs();
   await renderStaticDashboard();
 }
 
@@ -2992,7 +3026,7 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
-  // ---- Close duplicate Tab Out tabs ----
+  // ---- Close duplicate TabNest tabs ----
   if (action === 'close-tabout-dupes') {
     await closeTabOutDupes();
     playCloseSound();
