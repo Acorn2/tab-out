@@ -113,6 +113,8 @@ const MESSAGES = {
     stashToolLabel: '打开快速收纳',
     stashMenuTitle: '收纳',
     stashMenuHint: '选择收纳范围',
+    stashCurrentWindowHint: '仅收起当前这个 Chrome 窗口里的标签。',
+    stashAllWindowsHint: '按窗口分别收起，方便之后逐个恢复。',
     quickLinkCancel: '取消',
     quickLinkSave: '保存入口',
     quickLinkUpdate: '保存修改',
@@ -134,6 +136,7 @@ const MESSAGES = {
     stashAllWindows: '全部窗口',
     sessionSourceCurrentWindow: '当前窗口',
     sessionSourceAllWindows: '全部窗口',
+    sessionSourceWindowSession: '窗口会话',
     sessionRestoreAll: '恢复全部',
     sessionRestoreTab: '恢复',
     sessionDelete: '删除会话',
@@ -261,6 +264,8 @@ const MESSAGES = {
     stashToolLabel: 'Open quick stash',
     stashMenuTitle: 'Stash',
     stashMenuHint: 'Choose a scope',
+    stashCurrentWindowHint: 'Stash only the tabs from this Chrome window.',
+    stashAllWindowsHint: 'Stash each window separately so you can restore them one by one.',
     quickLinkCancel: 'Cancel',
     quickLinkSave: 'Save link',
     quickLinkUpdate: 'Save changes',
@@ -282,6 +287,7 @@ const MESSAGES = {
     stashAllWindows: 'All windows',
     sessionSourceCurrentWindow: 'Current window',
     sessionSourceAllWindows: 'All windows',
+    sessionSourceWindowSession: 'Window session',
     sessionRestoreAll: 'Restore all',
     sessionRestoreTab: 'Open',
     sessionDelete: 'Delete session',
@@ -578,7 +584,7 @@ function setSessionPanelOpen(nextOpen) {
   }
   if (trigger) trigger.setAttribute('aria-expanded', isSessionPanelOpen ? 'true' : 'false');
   if (trigger) trigger.classList.toggle('is-active', isSessionPanelOpen);
-  if (panel) panel.style.display = isSessionPanelOpen ? 'block' : 'none';
+  if (panel) panel.style.display = isSessionPanelOpen ? 'flex' : 'none';
 }
 
 async function markSessionsViewed() {
@@ -779,10 +785,16 @@ function applyStaticText() {
     sessionPanelCloseBtn.setAttribute('aria-label', t('sessionPanelClose'));
   }
   if (stashCurrentWindowBtn) {
-    stashCurrentWindowBtn.innerHTML = `<span class="stash-action-title">${escapeHtml(t('stashCurrentWindow'))}</span>`;
+    stashCurrentWindowBtn.innerHTML = `
+      <span class="stash-action-title">${escapeHtml(t('stashCurrentWindow'))}</span>
+      <span class="stash-action-meta">${escapeHtml(t('stashCurrentWindowHint'))}</span>
+    `;
   }
   if (stashAllWindowsBtn) {
-    stashAllWindowsBtn.innerHTML = `<span class="stash-action-title">${escapeHtml(t('stashAllWindows'))}</span>`;
+    stashAllWindowsBtn.innerHTML = `
+      <span class="stash-action-title">${escapeHtml(t('stashAllWindows'))}</span>
+      <span class="stash-action-meta">${escapeHtml(t('stashAllWindowsHint'))}</span>
+    `;
   }
   if (deferredTitle) deferredTitle.textContent = t('savedForLater');
   if (deferredEmpty) deferredEmpty.textContent = t('nothingSaved');
@@ -1482,11 +1494,14 @@ function normalizeTabSession(session, index = 0) {
   const tabs = Array.isArray(session.tabs)
     ? session.tabs.map((tab, tabIndex) => normalizeSessionTab(tab, tabIndex)).filter(tab => tab.url)
     : [];
+  const sourceType = ['all-windows', 'window-session'].includes(session.sourceType)
+    ? session.sourceType
+    : 'current-window';
 
   return {
     id: session.id || `session-${Date.now()}-${index}`,
     createdAt: session.createdAt || new Date().toISOString(),
-    sourceType: session.sourceType === 'all-windows' ? 'all-windows' : 'current-window',
+    sourceType,
     tabs,
   };
 }
@@ -1529,14 +1544,18 @@ function getSessionTopDomains(session, limit = 3) {
 }
 
 function getSessionTitle(session) {
-  const sourceLabel = session.sourceType === 'all-windows' ? t('sessionSourceAllWindows') : t('sessionSourceCurrentWindow');
+  const sourceLabel = session.sourceType === 'all-windows'
+    ? t('sessionSourceAllWindows')
+    : session.sourceType === 'window-session'
+      ? t('sessionSourceWindowSession')
+      : t('sessionSourceCurrentWindow');
   const topDomains = getSessionTopDomains(session, 2);
   return topDomains.length > 0 ? `${sourceLabel} · ${topDomains.join(' / ')}` : sourceLabel;
 }
 
 async function queryRealTabsSnapshot() {
   const tabs = await chrome.tabs.query({});
-  return tabs.filter(isRealWebTab).map((tab, index) => ({
+  return tabs.filter(isRealWebTab).map(tab => ({
     id: tab.id,
     url: getResolvedTabUrl(tab),
     title: getResolvedTabTitle(tab),
@@ -1544,7 +1563,7 @@ async function queryRealTabsSnapshot() {
     favIconUrl: tab.favIconUrl,
     active: tab.active,
     pinned: tab.pinned,
-    order: index,
+    order: Number.isFinite(tab.index) ? tab.index : 0,
   }));
 }
 
@@ -1570,14 +1589,65 @@ async function stashTabsAsSession(tabs, sourceType) {
   return nextSession;
 }
 
+function buildSessionWindowGroups(tabs) {
+  const groups = new Map();
+
+  for (const tab of tabs || []) {
+    const key = Number.isFinite(tab.windowId) && tab.windowId > 0 ? tab.windowId : 0;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(tab);
+  }
+
+  return [...groups.entries()]
+    .map(([windowId, windowTabs]) => ({
+      windowId,
+      tabs: [...windowTabs].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+      firstOrder: Math.min(...windowTabs.map(tab => Number.isFinite(tab.order) ? tab.order : 0)),
+    }))
+    .sort((a, b) => a.firstOrder - b.firstOrder || a.windowId - b.windowId);
+}
+
+async function stashWindowsAsSessions(tabs) {
+  if (!tabs || tabs.length === 0) return [];
+
+  const windowGroups = buildSessionWindowGroups(tabs);
+  if (windowGroups.length === 0) return [];
+
+  const sessions = await getTabSessions();
+  const baseTimestamp = Date.now();
+  const nextSessions = windowGroups.map((group, index) => normalizeTabSession({
+    id: `session-${baseTimestamp}-${group.windowId || index}`,
+    createdAt: new Date(baseTimestamp + index).toISOString(),
+    sourceType: 'window-session',
+    tabs: group.tabs,
+  }, sessions.length + index));
+
+  await saveTabSessions([...nextSessions, ...sessions]);
+
+  const tabIds = tabs.map(tab => tab.id).filter(Number.isFinite);
+  if (tabIds.length > 0) {
+    await chrome.tabs.remove(tabIds);
+  }
+
+  await fetchOpenTabs();
+  return nextSessions;
+}
+
+async function restoreTabsIntoNewWindow(tabs, focused = false) {
+  const urls = tabs.map(tab => tab.url).filter(Boolean);
+  if (urls.length === 0) return null;
+  return chrome.windows.create({ url: urls, focused });
+}
+
 async function restoreSession(sessionId) {
   const sessions = await getTabSessions();
   const session = sessions.find(item => item.id === sessionId);
   if (!session) throw new Error('session-not-found');
 
-  const currentWindow = await chrome.windows.getCurrent();
-  for (const tab of session.tabs) {
-    await chrome.tabs.create({ windowId: currentWindow.id, url: tab.url, active: false });
+  const windowGroups = buildSessionWindowGroups(session.tabs);
+  for (let index = 0; index < windowGroups.length; index += 1) {
+    const group = windowGroups[index];
+    await restoreTabsIntoNewWindow(group.tabs, index === 0);
   }
 
   await saveTabSessions(sessions.filter(item => item.id !== sessionId));
@@ -2937,7 +3007,7 @@ document.addEventListener('click', async (e) => {
         return;
       }
 
-      await stashTabsAsSession(tabs, 'all-windows');
+      await stashWindowsAsSessions(tabs);
       setStashMenuOpen(false);
       await renderDashboard();
       showToast(t('toastSessionSaved', tabs.length));

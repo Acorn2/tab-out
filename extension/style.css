@@ -2505,14 +2505,18 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 }
 
 .floating-tool-popovers {
-  position: absolute;
-  right: calc(100% + 14px);
-  top: 74px;
+  position: fixed;
+  right: 90px;
+  top: 24px;
+  bottom: 24px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  justify-content: center;
   gap: 12px;
   padding-top: 0;
+  z-index: 95;
+  pointer-events: none;
 }
 
 .floating-tools-dock {
@@ -2676,11 +2680,18 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
     0 20px 40px rgba(26, 22, 19, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(18px);
+  pointer-events: auto;
 }
 
 .stash-menu {
-  width: min(272px, calc(100vw - 108px));
-  padding: 12px;
+  width: min(320px, calc(100vw - 132px));
+  min-height: 280px;
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 .stash-menu-header {
@@ -2691,16 +2702,18 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 }
 
 .stash-menu-title {
-  font-family: 'Newsreader', serif;
-  font-size: 22px;
-  line-height: 1.05;
+  font-family: inherit;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   color: var(--ink);
 }
 
 .stash-menu-hint {
-  margin-top: 6px;
-  font-size: 11px;
-  line-height: 1.45;
+  margin-top: 5px;
+  font-size: 0.85rem;
+  line-height: 1.5;
   color: var(--muted);
 }
 
@@ -2731,17 +2744,21 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 
 .stash-menu-actions {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   margin-top: 12px;
 }
 
 .stash-action-card {
   width: 100%;
-  padding: 11px 12px;
-  border-radius: 14px;
+  min-height: 68px;
+  padding: 12px 14px;
+  border-radius: 16px;
   border: 1px solid rgba(232, 226, 218, 0.96);
   background: rgba(255, 255, 255, 0.7);
   text-align: left;
+  display: grid;
+  align-content: center;
+  gap: 3px;
   cursor: pointer;
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
@@ -2755,15 +2772,25 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 
 .stash-action-title {
   display: block;
-  font-size: 14px;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--ink);
 }
 
+.stash-action-meta {
+  display: block;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--muted);
+  max-width: 28ch;
+}
+
 .session-panel {
-  width: min(320px, calc(100vw - 108px));
-  max-height: min(85vh, 800px);
-  padding: 14px;
+  width: min(348px, calc(100vw - 132px));
+  min-height: 420px;
+  max-height: min(calc(100vh - 48px), 800px);
+  max-height: min(calc(100dvh - 48px), 800px);
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2778,20 +2805,20 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 }
 
 .session-panel-heading h3 {
-  margin-top: 6px;
-  font-family: 'Newsreader', serif;
-  font-size: 24px;
-  font-weight: 400;
-  letter-spacing: -0.03em;
+  font-family: inherit;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--ink);
-  line-height: 1.05;
+  line-height: 1.2;
 }
 
 .session-panel-meta-row {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
+  margin-top: -4px;
 }
 
 .session-panel-subtitle {
@@ -3113,11 +3140,14 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 
 .sessions-list {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
   padding-right: 2px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
   min-height: 0;
+  overscroll-behavior: contain;
 }
 
 .sessions-list::-webkit-scrollbar {
@@ -3395,9 +3425,12 @@ body.theme-dark .floating-tool-badge {
     align-items: flex-end;
   }
   .floating-tool-popovers {
-    right: calc(100% + 12px);
-    top: auto;
-    bottom: 62px;
+    left: 16px;
+    right: 76px;
+    top: 16px;
+    bottom: 16px;
+    justify-content: flex-start;
+    align-items: stretch;
     gap: 10px;
     padding-top: 0;
   }
@@ -3405,11 +3438,15 @@ body.theme-dark .floating-tool-badge {
     gap: 12px;
   }
   .stash-menu {
-    width: min(264px, calc(100vw - 44px));
+    width: auto;
+    max-height: 100%;
+    border-radius: 24px;
+    padding: 14px;
   }
   .session-panel {
-    width: min(320px, calc(100vw - 44px));
-    max-height: min(68vh, 560px);
+    width: auto;
+    max-height: 100%;
+    border-radius: 24px;
   }
   .session-panel-heading h3 {
     font-size: 22px;
@@ -3557,19 +3594,40 @@ body.theme-dark .floating-tool-badge {
   }
   .floating-tool-popovers {
     align-items: flex-end;
-    right: calc(100% + 10px);
-    bottom: 52px;
+    left: 12px;
+    right: 66px;
+    top: 12px;
+    bottom: 12px;
+    align-items: stretch;
     padding-top: 0;
   }
   .stash-menu {
-    width: min(240px, calc(100vw - 84px));
+    width: auto;
+    max-height: 100%;
     padding: 12px;
   }
+  .stash-menu-title {
+    font-size: 1.7rem;
+  }
+  .stash-menu-hint {
+    font-size: 0.78rem;
+  }
+  .stash-action-card {
+    min-height: 64px;
+    padding: 11px 13px;
+  }
+  .stash-action-title {
+    font-size: 0.96rem;
+  }
+  .stash-action-meta {
+    font-size: 0.72rem;
+    max-width: none;
+  }
   .session-panel {
-    width: min(320px, calc(100vw - 84px));
-    max-height: min(66vh, 520px);
+    width: auto;
+    max-height: 100%;
     border-radius: 20px;
-    padding: 16px;
+    padding: 16px 16px max(16px, calc(env(safe-area-inset-bottom) + 16px));
   }
   .stash-menu-title,
   .session-panel-heading h3 {
