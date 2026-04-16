@@ -38,6 +38,7 @@ let currentSettingsPanel = 'appearance';
 let quickLinksOpenMode = 'current-tab';
 let currentOpenTabsView = 'domains';
 let draggedWindowTabState = null;
+let dashboardRefreshTimer = null;
 
 const LANGUAGE_STORAGE_KEY = 'uiLanguage';
 const THEME_STORAGE_KEY = 'uiTheme';
@@ -611,9 +612,6 @@ function setSessionPanelOpen(nextOpen) {
   if (isSessionPanelOpen) {
     setSettingsModalOpen(false);
     setStashMenuOpen(false);
-    
-    // Mark sessions as viewed when opening
-    markSessionsViewed();
   }
   if (trigger) trigger.setAttribute('aria-expanded', isSessionPanelOpen ? 'true' : 'false');
   if (trigger) trigger.classList.toggle('is-active', isSessionPanelOpen);
@@ -1201,18 +1199,21 @@ async function fetchOpenTabs() {
     const newtabUrl = `chrome-extension://${extensionId}/index.html`;
 
     const tabs = await chrome.tabs.query({});
-    openTabs = tabs.map(t => ({
-      id:       t.id,
-      url:      t.url,
-      title:    t.title,
-      windowId: t.windowId,
-      index:    Number.isFinite(t.index) ? t.index : 0,
-      favIconUrl: t.favIconUrl,
-      active:   t.active,
-      pinned:   !!t.pinned,
-      // Flag TabNest's own pages so we can detect duplicate new tabs
-      isTabOut: t.url === newtabUrl || t.url === 'chrome://newtab/',
-    }));
+    openTabs = tabs.map(t => {
+      const resolvedUrl = getResolvedTabUrl(t);
+      return {
+        id:       t.id,
+        url:      resolvedUrl,
+        title:    getResolvedTabTitle(t),
+        windowId: t.windowId,
+        index:    Number.isFinite(t.index) ? t.index : 0,
+        favIconUrl: t.favIconUrl,
+        active:   t.active,
+        pinned:   !!t.pinned,
+        // Flag TabNest's own pages so we can detect duplicate new tabs
+        isTabOut: resolvedUrl === newtabUrl || resolvedUrl === 'chrome://newtab/',
+      };
+    });
   } catch {
     // chrome.tabs API unavailable (shouldn't happen in an extension page)
     openTabs = [];
@@ -1478,9 +1479,19 @@ async function dismissSavedTab(id) {
   }
 }
 
+function getResolvedTabUrl(tab) {
+  return String(tab?.url || tab?.pendingUrl || '').trim();
+}
+
+function getResolvedTabTitle(tab) {
+  const url = getResolvedTabUrl(tab);
+  return String(tab?.title || url).trim();
+}
+
 function isRealWebTab(tab) {
-  const url = tab?.url || '';
+  const url = getResolvedTabUrl(tab);
   return (
+    !!url &&
     !url.startsWith('chrome://') &&
     !url.startsWith('chrome-extension://') &&
     !url.startsWith('about:') &&
@@ -1559,8 +1570,8 @@ async function queryRealTabsSnapshot() {
   const tabs = await chrome.tabs.query({});
   return tabs.filter(isRealWebTab).map((tab, index) => ({
     id: tab.id,
-    url: tab.url,
-    title: tab.title,
+    url: getResolvedTabUrl(tab),
+    title: getResolvedTabTitle(tab),
     windowId: tab.windowId,
     favIconUrl: tab.favIconUrl,
     active: tab.active,
@@ -1616,6 +1627,57 @@ async function restoreSessionTab(sessionId, url) {
   await chrome.tabs.create({ windowId: currentWindow.id, url: tab.url, active: true });
   await fetchOpenTabs();
   return tab;
+}
+
+async function refreshDashboardAfterSessionChange(delay = 280) {
+  await new Promise(resolve => window.setTimeout(resolve, delay));
+  await renderDashboard();
+}
+
+function scheduleDashboardRefresh(delay = 160) {
+  if (dashboardRefreshTimer) {
+    window.clearTimeout(dashboardRefreshTimer);
+  }
+
+  dashboardRefreshTimer = window.setTimeout(async () => {
+    dashboardRefreshTimer = null;
+    await renderDashboard();
+  }, delay);
+}
+
+function registerChromeStateListeners() {
+  if (!chrome?.tabs || !chrome?.storage?.onChanged) return;
+
+  chrome.tabs.onCreated.addListener(() => {
+    scheduleDashboardRefresh(120);
+  });
+
+  chrome.tabs.onRemoved.addListener(() => {
+    scheduleDashboardRefresh(80);
+  });
+
+  chrome.tabs.onMoved.addListener(() => {
+    scheduleDashboardRefresh(80);
+  });
+
+  chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
+    if (!changeInfo.url && !changeInfo.title && !changeInfo.favIconUrl && !changeInfo.status) return;
+    scheduleDashboardRefresh(changeInfo.status === 'complete' ? 80 : 180);
+  });
+
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== 'local') return;
+    if (
+      !changes[TAB_SESSIONS_STORAGE_KEY] &&
+      !changes[SESSIONS_VIEWED_COUNT_KEY] &&
+      !changes[QUICK_LINKS_STORAGE_KEY] &&
+      !changes.deferred
+    ) {
+      return;
+    }
+
+    scheduleDashboardRefresh(60);
+  });
 }
 
 async function deleteSession(sessionId) {
@@ -2447,11 +2509,12 @@ async function renderSessionsFloatingPanel() {
       const { [SESSIONS_VIEWED_COUNT_KEY]: viewedCount = 0 } = await chrome.storage.local.get(SESSIONS_VIEWED_COUNT_KEY);
       const unreadCount = Math.max(0, sessions.length - viewedCount);
       
-      if (unreadCount > 0) {
+      // If panel is open or unreadCount is 0, hide the badge
+      if (isSessionPanelOpen || unreadCount === 0) {
+        badgeEl.hidden = true;
+      } else {
         badgeEl.textContent = String(unreadCount);
         badgeEl.hidden = false;
-      } else {
-        badgeEl.hidden = true;
       }
       
       trigger.classList.toggle('has-sessions', true);
@@ -2882,7 +2945,11 @@ document.addEventListener('click', async (e) => {
   if (action === 'toggle-session-panel') {
     const trigger = document.getElementById('sessionFabTrigger');
     if (!trigger || trigger.hidden) return;
-    setSessionPanelOpen(!isSessionPanelOpen);
+    const nextOpen = !isSessionPanelOpen;
+    setSessionPanelOpen(nextOpen);
+    if (nextOpen) {
+      await markSessionsViewed();
+    }
     return;
   }
 
@@ -2931,7 +2998,9 @@ document.addEventListener('click', async (e) => {
 
     try {
       const session = await restoreSession(sessionId);
-      await renderDashboard();
+      setSessionPanelOpen(false);
+      await markSessionsViewed();
+      await refreshDashboardAfterSessionChange(360);
       showToast(t('toastSessionRestored', session.tabs.length));
     } catch (err) {
       console.warn('[tab-out] Could not restore session:', err);
@@ -2947,7 +3016,8 @@ document.addEventListener('click', async (e) => {
 
     try {
       await restoreSessionTab(sessionId, url);
-      await renderDashboard();
+      await markSessionsViewed();
+      await refreshDashboardAfterSessionChange(320);
     } catch (err) {
       console.warn('[tab-out] Could not restore session tab:', err);
       showToast(t('toastSessionRestoreFailed'));
@@ -3562,6 +3632,7 @@ async function initializeApp() {
   await loadBackgroundPreference();
   await loadQuickLinksOpenModePreference();
   await loadOpenTabsViewPreference();
+  registerChromeStateListeners();
   await renderDashboard();
 }
 
